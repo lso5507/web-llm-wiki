@@ -10,5 +10,11 @@
 
 ```bash
 npm install
-OPENROUTER_API_KEY="your-key" npm run dev
+
+# .env 파일에 OpenRouter API 키 설정
+# OPENROUTER_API_KEY=your-actual-key-here
+
+npm run dev
 ```
+
+서버는 `http://127.0.0.1:3000`에서 실행됩니다.

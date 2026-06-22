@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createNodeServer } from './infrastructure/http/server.js';
 
 const port = Number.parseInt(process.env.PORT ?? '3000', 10);

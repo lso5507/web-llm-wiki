@@ -14,11 +14,14 @@ describe('GET /', () => {
     const html = await response.text();
 
     expect(html).toContain('LLM Wiki');
-    expect(html).toContain('질문보다 기록을 먼저');
     expect(html).toContain('id="title-input"');
     expect(html).toContain('id="content-input"');
     expect(html).toContain('id="save-button"');
     expect(html).toContain('id="result-panel"');
     expect(html).toContain('id="index-list"');
+    expect(html).toContain('EasyMDE'); // 마크다운 에디터 확인
+    expect(html).toContain('data-tab="write"'); // 탭 메뉴 확인
+    expect(html).toContain('data-tab="browse"');
+    expect(html).toContain('data-tab="results"');
   });
 });

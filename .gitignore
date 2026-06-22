@@ -3,3 +3,6 @@ dist/
 coverage/
 .vitest/
 .runtime/
+.env
+.env.local
+.env.*.local

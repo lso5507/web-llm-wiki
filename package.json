@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "hono": "^4.9.6"
   },
   "devDependencies": {

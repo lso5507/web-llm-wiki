@@ -87,314 +87,426 @@ const renderHomePage = (): string => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LLM Wiki</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
     <style>
       :root {
         color-scheme: light;
-        --bg: #f6f7fb;
-        --panel: rgba(255, 255, 255, 0.88);
-        --line: rgba(15, 23, 42, 0.1);
+        --bg: #fafbfc;
+        --panel: #ffffff;
+        --line: rgba(15, 23, 42, 0.08);
         --text: #0f172a;
-        --muted: #5b6474;
+        --muted: #64748b;
         --accent: #2563eb;
-        --accent-soft: rgba(37, 99, 235, 0.12);
-        --shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+        --accent-soft: rgba(37, 99, 235, 0.1);
+        --shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
       }
 
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-        background:
-          radial-gradient(circle at top, rgba(37, 99, 235, 0.08), transparent 38%),
-          linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: var(--bg);
         color: var(--text);
       }
 
-      .shell {
-        width: min(1120px, calc(100vw - 32px));
-        margin: 0 auto;
-        padding: 48px 0 56px;
-      }
-
-      .hero {
-        display: grid;
-        gap: 22px;
-        justify-items: center;
-        text-align: center;
-        margin-bottom: 28px;
-      }
-
-      .badge {
-        padding: 8px 14px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.86);
-        border: 1px solid var(--line);
-        color: var(--muted);
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(52px, 8vw, 88px);
-        line-height: 0.95;
-        letter-spacing: -0.05em;
-        font-weight: 700;
-      }
-
-      .subtitle {
-        margin: 0;
-        max-width: 720px;
-        color: var(--muted);
-        font-size: 18px;
-        line-height: 1.7;
-      }
-
-      .layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
-        gap: 22px;
-      }
-
-      .panel {
+      /* Header */
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
         background: var(--panel);
-        border: 1px solid rgba(255,255,255,0.65);
-        border-radius: 28px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 24px;
       }
 
-      .editor-panel { padding: 26px; }
-      .side-panel { padding: 24px; display: grid; gap: 18px; }
-
-      .panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 18px;
-      }
-
-      .panel-title {
-        margin: 0;
-        font-size: 24px;
-        letter-spacing: -0.03em;
-      }
-
-      .panel-note {
-        color: var(--muted);
+      .logo {
         font-size: 14px;
-      }
-
-      .editor-grid { display: grid; gap: 14px; }
-
-      label {
-        display: grid;
-        gap: 8px;
-        font-size: 14px;
-        color: var(--muted);
-      }
-
-      input, textarea {
-        width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: rgba(255,255,255,0.88);
+        font-weight: 600;
         color: var(--text);
-        font: inherit;
-        padding: 16px 18px;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-      }
-
-      input:focus, textarea:focus {
-        outline: none;
-        border-color: rgba(37, 99, 235, 0.35);
-        box-shadow: 0 0 0 5px var(--accent-soft);
-        transform: translateY(-1px);
-      }
-
-      input { font-size: 18px; font-weight: 600; }
-      textarea {
-        min-height: 360px;
-        resize: vertical;
-        line-height: 1.7;
-        font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
-      }
-
-      .actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-      }
-
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 14px 22px;
-        background: linear-gradient(135deg, #1d4ed8, #2563eb 58%, #60a5fa);
-        color: white;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 16px 32px rgba(37, 99, 235, 0.28);
-      }
-
-      button:disabled { cursor: wait; opacity: 0.7; }
-
-      .helper {
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .card {
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        background: rgba(255,255,255,0.74);
-        padding: 18px;
-      }
-
-      .card h3 {
-        margin: 0 0 10px;
-        font-size: 17px;
         letter-spacing: -0.02em;
       }
 
-      .summary {
-        margin: 0;
-        color: var(--text);
-        line-height: 1.65;
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        padding: 0 24px;
       }
 
-      .meta {
-        margin-top: 12px;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .empty {
-        color: var(--muted);
+      .tab-button {
+        border: 0;
+        background: transparent;
+        padding: 12px 16px;
+        font: inherit;
         font-size: 14px;
-        line-height: 1.7;
+        color: var(--muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
       }
 
+      .tab-button:hover {
+        color: var(--text);
+      }
+
+      .tab-button.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      /* Main container */
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 24px;
+      }
+
+      /* Tab content */
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Write tab */
+      .write-section {
+        display: grid;
+        gap: 24px;
+      }
+
+      .input-group {
+        display: grid;
+        gap: 8px;
+      }
+
+      .input-group label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      #title-input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-size: 24px;
+        font-weight: 600;
+        padding: 12px 16px;
+        transition: border-color 0.2s;
+      }
+
+      #title-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      #title-input::placeholder {
+        color: var(--muted);
+        opacity: 0.5;
+      }
+
+      /* EasyMDE customization */
+      .EasyMDEContainer {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .EasyMDEContainer .CodeMirror {
+        min-height: 500px;
+        font-size: 15px;
+        line-height: 1.7;
+        border: 0;
+      }
+
+      .editor-toolbar {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: var(--bg);
+      }
+
+      .editor-toolbar button {
+        color: var(--muted) !important;
+      }
+
+      .editor-toolbar button:hover,
+      .editor-toolbar button.active {
+        background: var(--accent-soft) !important;
+        border-color: transparent !important;
+        color: var(--accent) !important;
+      }
+
+      .CodeMirror-cursor {
+        border-left-color: var(--accent);
+      }
+
+      .cm-header {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .cm-link {
+        color: var(--accent);
+      }
+
+      .cm-url {
+        color: var(--muted);
+      }
+
+      /* Save button */
+      .save-button {
+        border: 0;
+        border-radius: 8px;
+        padding: 12px 24px;
+        background: var(--accent);
+        color: white;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        justify-self: start;
+      }
+
+      .save-button:hover {
+        opacity: 0.9;
+      }
+
+      .save-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      /* Browse tab */
       .index-list {
         display: grid;
         gap: 12px;
       }
 
       .index-item {
-        padding: 14px 16px;
-        border-radius: 18px;
-        background: rgba(248, 250, 252, 0.92);
-        border: 1px solid rgba(15, 23, 42, 0.06);
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        transition: box-shadow 0.2s;
       }
 
-      .index-item strong { display: block; margin-bottom: 6px; }
-      .index-item p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+      .index-item:hover {
+        box-shadow: var(--shadow);
+      }
 
-      @media (max-width: 960px) {
-        .layout { grid-template-columns: 1fr; }
-        .shell { padding-top: 28px; }
+      .index-item-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
+      }
+
+      .index-item-summary {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* Results tab */
+      .result-card {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .result-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--text);
+      }
+
+      .result-summary {
+        font-size: 15px;
+        color: var(--text);
+        line-height: 1.7;
+        margin-bottom: 16px;
+      }
+
+      .result-meta {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 24px 16px;
+        }
+        
+        .header {
+          padding: 12px 16px;
+        }
+        
+        .tabs {
+          padding: 0 16px;
+        }
       }
     </style>
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <div class="badge">Knowledge workspace</div>
-        <h1>LLM Wiki</h1>
-        <p class="subtitle">질문보다 기록을 먼저. 문서를 가볍게 남기면, 요약과 인덱스 반영까지 이어지는 가장 단순한 홈 화면입니다.</p>
-      </section>
+    <header class="header">
+      <div class="logo">LLM Wiki</div>
+    </header>
 
-      <section class="layout">
-        <section class="panel editor-panel">
-          <div class="panel-header">
-            <div>
-              <h2 class="panel-title">Write</h2>
-              <div class="panel-note">제목과 마크다운 본문만 입력하면 저장 시 summary가 자동 생성됩니다.</div>
-            </div>
+    <nav class="tabs">
+      <button class="tab-button active" data-tab="write">Write</button>
+      <button class="tab-button" data-tab="browse">Browse</button>
+      <button class="tab-button" data-tab="results">Results</button>
+    </nav>
+
+    <main class="container">
+      <!-- Write Tab -->
+      <section id="write-tab" class="tab-content active">
+        <form id="write-form" class="write-section">
+          <div class="input-group">
+            <label for="title-input">제목</label>
+            <input 
+              id="title-input" 
+              name="title" 
+              type="text" 
+              placeholder="문서 제목을 입력하세요" 
+              required 
+            />
           </div>
 
-          <form id="write-form" class="editor-grid">
-            <label>
-              Title
-              <input id="title-input" name="title" type="text" placeholder="예: 배송비 정책" required />
-            </label>
+          <div class="input-group">
+            <label for="content-input">내용</label>
+            <textarea id="content-input" name="content"></textarea>
+          </div>
 
-            <label>
-              Markdown
-              <textarea id="content-input" name="content" placeholder="# 문서 제목\n핵심 내용과 규칙을 자유롭게 적어주세요." required></textarea>
-            </label>
+          <button id="save-button" class="save-button" type="submit">
+            저장하기
+          </button>
+        </form>
+      </section>
 
-            <div class="actions">
-              <button id="save-button" type="submit">저장하고 요약 만들기</button>
-              <span class="helper">현재 연결: <code>POST /documents</code> → <code>GET /index</code></span>
-            </div>
-          </form>
-        </section>
+      <!-- Browse Tab -->
+      <section id="browse-tab" class="tab-content">
+        <div id="index-list" class="index-list">
+          <div class="empty-state">아직 문서가 없습니다</div>
+        </div>
+      </section>
 
-        <aside class="side-panel">
-          <section id="result-panel" class="card">
-            <h3>저장 결과</h3>
-            <p class="empty">아직 저장된 결과가 없습니다. 제목과 마크다운을 입력한 뒤 저장해보세요.</p>
-          </section>
-
-          <section class="card">
-            <h3>최근 인덱스</h3>
-            <div id="index-list" class="index-list">
-              <p class="empty">아직 인덱스 항목이 없습니다.</p>
-            </div>
-          </section>
-        </aside>
+      <!-- Results Tab -->
+      <section id="results-tab" class="tab-content">
+        <div id="result-panel">
+          <div class="empty-state">저장 결과가 여기에 표시됩니다</div>
+        </div>
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
     <script>
+      // Initialize EasyMDE
+      const easyMDE = new EasyMDE({
+        element: document.getElementById('content-input'),
+        spellChecker: false,
+        autosave: {
+          enabled: true,
+          uniqueId: 'llm-wiki-editor',
+          delay: 1000,
+        },
+        placeholder: '마크다운으로 내용을 작성하세요...',
+        toolbar: [
+          'bold', 'italic', 'heading', '|',
+          'quote', 'unordered-list', 'ordered-list', '|',
+          'link', 'image', 'table', '|',
+          'preview', 'side-by-side', 'fullscreen', '|',
+          'guide'
+        ],
+        status: false,
+      });
+
+      // Tab switching
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetTab = button.dataset.tab;
+          
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabContents.forEach(content => content.classList.remove('active'));
+          
+          button.classList.add('active');
+          document.getElementById(targetTab + '-tab').classList.add('active');
+        });
+      });
+
+      // Form elements
       const form = document.getElementById('write-form');
       const titleInput = document.getElementById('title-input');
-      const contentInput = document.getElementById('content-input');
       const saveButton = document.getElementById('save-button');
       const resultPanel = document.getElementById('result-panel');
       const indexList = document.getElementById('index-list');
 
+      // Render functions
       const renderResult = (payload, isError = false) => {
         if (isError) {
-          resultPanel.innerHTML = '<h3>저장 결과</h3>' +
-            '<p class="summary">요청이 실패했습니다.</p>' +
-            '<div class="meta">' + payload.message + '</div>';
+          resultPanel.innerHTML = 
+            '<div class="result-card">' +
+              '<div class="result-title">저장 실패</div>' +
+              '<div class="result-summary">' + payload.message + '</div>' +
+            '</div>';
           return;
         }
 
-        resultPanel.innerHTML = '<h3>' + payload.title + '</h3>' +
-          '<p class="summary">' + payload.summary + '</p>' +
-          '<div class="meta">status: ' + payload.status + '</div>';
+        resultPanel.innerHTML = 
+          '<div class="result-card">' +
+            '<div class="result-title">' + payload.title + '</div>' +
+            '<div class="result-summary">' + payload.summary + '</div>' +
+            '<div class="result-meta">Status: ' + payload.status + '</div>' +
+          '</div>';
       };
 
       const renderIndex = (entries) => {
         if (!entries.length) {
-          indexList.innerHTML = '<p class="empty">아직 인덱스 항목이 없습니다.</p>';
+          indexList.innerHTML = '<div class="empty-state">아직 문서가 없습니다</div>';
           return;
         }
 
-        indexList.innerHTML = entries.map((entry) =>
+        indexList.innerHTML = entries.map(entry =>
           '<article class="index-item">' +
-            '<strong>' + entry.title + '</strong>' +
-            '<p>' + entry.summary + '</p>' +
+            '<div class="index-item-title">' + entry.title + '</div>' +
+            '<div class="index-item-summary">' + entry.summary + '</div>' +
           '</article>'
         ).join('');
       };
 
       const refreshIndex = async () => {
-        const response = await fetch('/index');
-        const entries = await response.json();
-        renderIndex(entries);
+        try {
+          const response = await fetch('/index');
+          const entries = await response.json();
+          renderIndex(entries);
+        } catch (error) {
+          console.error('Failed to refresh index:', error);
+        }
       };
 
+      // Form submission
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         saveButton.disabled = true;
@@ -406,7 +518,7 @@ const renderHomePage = (): string => {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
               title: titleInput.value,
-              content: contentInput.value,
+              content: easyMDE.value(),
             }),
           });
 
@@ -414,19 +526,30 @@ const renderHomePage = (): string => {
 
           if (!response.ok) {
             renderResult(payload, true);
+            // Switch to Results tab
+            document.querySelector('[data-tab="results"]').click();
             return;
           }
 
           renderResult(payload);
           await refreshIndex();
+          
+          // Switch to Results tab
+          document.querySelector('[data-tab="results"]').click();
+          
+          // Clear form
+          titleInput.value = '';
+          easyMDE.value('');
         } catch (error) {
           renderResult({ message: '네트워크 오류가 발생했습니다.' }, true);
+          document.querySelector('[data-tab="results"]').click();
         } finally {
           saveButton.disabled = false;
-          saveButton.textContent = '저장하고 요약 만들기';
+          saveButton.textContent = '저장하기';
         }
       });
 
+      // Initial index load
       refreshIndex();
     </script>
   </body>
