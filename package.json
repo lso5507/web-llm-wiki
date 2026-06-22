@@ -1,0 +1,22 @@
+{
+  "name": "web-llm-wiki",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:runtime": "rm -rf .runtime && tsc --outDir .runtime --noEmit false",
+    "dev": "npm run build:runtime && node .runtime/src/server.js",
+    "start": "npm run build:runtime && node .runtime/src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.9.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
