@@ -23,6 +23,8 @@ export const createIndexRouter = ({ listIndexUseCase }: IndexRouteDependencies):
         title: entry.title,
         summary: entry.summary,
         sourceCount: entry.sourceCount,
+        status: entry.status.value,
+        domain: entry.domain?.value ?? null,
       })),
     );
   });

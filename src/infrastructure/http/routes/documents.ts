@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 
 import { ContentRequiredForSummaryGenerationError } from '../../../application/errors/content-required-for-summary-generation-error.js';
 import { SummaryGeneratorNotConfiguredError } from '../../../application/errors/summary-generator-not-configured-error.js';
+import { CircularHierarchyError } from '../../../domain/wiki/hierarchy-validator.js';
 import { InvalidIndexEntryError } from '../../../domain/wiki/index-entry.js';
 import { InvalidTitleError } from '../../../domain/wiki/title.js';
 import type { SaveDocumentUseCase } from '../../../application/use-cases/save-document.js';
@@ -17,6 +18,9 @@ type CreateDocumentPayload = {
   summary?: string;
   content?: string;
   tags?: string[];
+  parentSlug?: string | null;
+  parentSlugProvided: boolean;
+  forceSemanticConflicts?: boolean;
 };
 
 class InvalidJsonError extends Error {
@@ -46,13 +50,25 @@ export const createDocumentsRouter = ({ saveDocumentUseCase, maxRequestBytes }: 
   router.post('/', async (context) => {
     try {
       const payload = validateCreateDocumentPayload(await parseRequestBody(context.req.raw, maxRequestBytes));
-      const result = await saveDocumentUseCase.execute(payload);
+      const useCaseInput: Parameters<SaveDocumentUseCase['execute']>[0] = {
+        title: payload.title,
+      };
+      if (payload.summary !== undefined) useCaseInput.summary = payload.summary;
+      if (payload.content !== undefined) useCaseInput.content = payload.content;
+      if (payload.tags !== undefined) useCaseInput.tags = payload.tags;
+      if (payload.parentSlugProvided) useCaseInput.parentSlug = payload.parentSlug ?? null;
+      if (payload.forceSemanticConflicts !== undefined) {
+        useCaseInput.forceSemanticConflicts = payload.forceSemanticConflicts;
+      }
+
+      const result = await saveDocumentUseCase.execute(useCaseInput);
 
       return context.json(
         {
           title: result.document.title.value,
           summary: result.summary,
           status: result.status,
+          parentSlug: result.document.parentSlug,
         },
         201,
       );
@@ -63,7 +79,8 @@ export const createDocumentsRouter = ({ saveDocumentUseCase, maxRequestBytes }: 
         error instanceof ContentRequiredForSummaryGenerationError ||
         error instanceof SummaryGeneratorNotConfiguredError ||
         error instanceof InvalidTitleError ||
-        error instanceof InvalidIndexEntryError
+        error instanceof InvalidIndexEntryError ||
+        error instanceof CircularHierarchyError
       ) {
         return context.json({ message: error.message }, 400);
       }
@@ -126,6 +143,30 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     }
   }
 
+  if (
+    candidate.forceSemanticConflicts !== undefined &&
+    typeof candidate.forceSemanticConflicts !== 'boolean'
+  ) {
+    throw new InvalidDocumentPayloadError('forceSemanticConflicts must be a boolean when provided');
+  }
+
+  const parentSlugProvided = Object.prototype.hasOwnProperty.call(candidate, 'parentSlug');
+  if (
+    parentSlugProvided &&
+    candidate.parentSlug !== null &&
+    typeof candidate.parentSlug !== 'string'
+  ) {
+    throw new InvalidDocumentPayloadError('parentSlug must be a string or null when provided');
+  }
+
+  if (
+    parentSlugProvided &&
+    typeof candidate.parentSlug === 'string' &&
+    candidate.parentSlug.length > 200
+  ) {
+    throw new InvalidDocumentPayloadError('parentSlug must be 200 characters or fewer');
+  }
+
   const title = candidate.title.trim();
   const summary = typeof candidate.summary === 'string' ? candidate.summary.trim() : undefined;
   const content = candidate.content ?? '';
@@ -151,5 +192,8 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     summary: candidate.summary as string | undefined,
     content: candidate.content as string | undefined,
     tags: candidate.tags as string[] | undefined,
+    parentSlug: parentSlugProvided ? (candidate.parentSlug as string | null) : undefined,
+    parentSlugProvided,
+    forceSemanticConflicts: candidate.forceSemanticConflicts as boolean | undefined,
   };
 };

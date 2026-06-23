@@ -13,7 +13,12 @@ describe('POST /documents', () => {
     });
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ title: 'Foo', summary: 'About Foo', status: 'completed' });
+    expect(await response.json()).toEqual({
+      title: 'Foo',
+      summary: 'About Foo',
+      status: 'completed',
+      parentSlug: null,
+    });
   });
 
   it('returns 201 with an auto-generated summary when summary is omitted', async () => {
@@ -36,7 +41,12 @@ describe('POST /documents', () => {
     });
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ title: 'Foo', summary: 'Generated summary', status: 'completed' });
+    expect(await response.json()).toEqual({
+      title: 'Foo',
+      summary: 'Generated summary',
+      status: 'completed',
+      parentSlug: null,
+    });
   });
 
   it('returns 400 for an invalid title', async () => {
