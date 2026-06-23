@@ -18,8 +18,6 @@ type CreateDocumentPayload = {
   summary?: string;
   content?: string;
   tags?: string[];
-  parentSlug?: string | null;
-  parentSlugProvided: boolean;
   forceSemanticConflicts?: boolean;
 };
 
@@ -56,7 +54,6 @@ export const createDocumentsRouter = ({ saveDocumentUseCase, maxRequestBytes }: 
       if (payload.summary !== undefined) useCaseInput.summary = payload.summary;
       if (payload.content !== undefined) useCaseInput.content = payload.content;
       if (payload.tags !== undefined) useCaseInput.tags = payload.tags;
-      if (payload.parentSlugProvided) useCaseInput.parentSlug = payload.parentSlug ?? null;
       if (payload.forceSemanticConflicts !== undefined) {
         useCaseInput.forceSemanticConflicts = payload.forceSemanticConflicts;
       }
@@ -150,23 +147,6 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     throw new InvalidDocumentPayloadError('forceSemanticConflicts must be a boolean when provided');
   }
 
-  const parentSlugProvided = Object.prototype.hasOwnProperty.call(candidate, 'parentSlug');
-  if (
-    parentSlugProvided &&
-    candidate.parentSlug !== null &&
-    typeof candidate.parentSlug !== 'string'
-  ) {
-    throw new InvalidDocumentPayloadError('parentSlug must be a string or null when provided');
-  }
-
-  if (
-    parentSlugProvided &&
-    typeof candidate.parentSlug === 'string' &&
-    candidate.parentSlug.length > 200
-  ) {
-    throw new InvalidDocumentPayloadError('parentSlug must be 200 characters or fewer');
-  }
-
   const title = candidate.title.trim();
   const summary = typeof candidate.summary === 'string' ? candidate.summary.trim() : undefined;
   const content = candidate.content ?? '';
@@ -192,8 +172,6 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     summary: candidate.summary as string | undefined,
     content: candidate.content as string | undefined,
     tags: candidate.tags as string[] | undefined,
-    parentSlug: parentSlugProvided ? (candidate.parentSlug as string | null) : undefined,
-    parentSlugProvided,
     forceSemanticConflicts: candidate.forceSemanticConflicts as boolean | undefined,
   };
 };

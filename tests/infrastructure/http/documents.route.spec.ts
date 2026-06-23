@@ -21,6 +21,28 @@ describe('POST /documents', () => {
     });
   });
 
+  it('ignores manual parentSlug input in the write flow', async () => {
+    const app = createApp();
+
+    const response = await app.request('/documents', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Child',
+        summary: 'About child',
+        parentSlug: 'manual-parent',
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({
+      title: 'Child',
+      summary: 'About child',
+      status: 'completed',
+      parentSlug: null,
+    });
+  });
+
   it('returns 201 with an auto-generated summary when summary is omitted', async () => {
     const app = createApp({
       openRouter: {

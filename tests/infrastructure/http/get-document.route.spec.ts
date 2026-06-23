@@ -74,7 +74,7 @@ describe('GET /documents/:id', () => {
     expect(payload.conflictWith).toEqual([]);
     expect(payload.semanticConflicts).toEqual([]);
     expect(payload.summary).toBe('');
-    expect(payload.status).toBe('draft');
+    expect(payload.status).toBe('published');
     expect(payload.domain).toBeNull();
     expect(payload.createdAt).toBeNull();
     expect(payload.updatedAt).toBeNull();

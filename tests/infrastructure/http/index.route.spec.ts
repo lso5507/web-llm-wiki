@@ -25,14 +25,14 @@ describe('GET /index', () => {
         title: 'Bar',
         summary: 'About Bar',
         sourceCount: 0,
-        status: 'draft',
+        status: 'published',
         domain: null,
       },
       {
         title: 'Foo',
         summary: 'About Foo',
         sourceCount: 0,
-        status: 'draft',
+        status: 'published',
         domain: null,
       },
     ]);

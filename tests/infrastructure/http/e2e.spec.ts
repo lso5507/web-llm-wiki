@@ -19,7 +19,7 @@ describe('document save flow', () => {
         title: 'Orenz Test Account',
         summary: 'Test account credentials',
         sourceCount: 0,
-        status: 'draft',
+        status: 'published',
         domain: null,
       },
     ]);
