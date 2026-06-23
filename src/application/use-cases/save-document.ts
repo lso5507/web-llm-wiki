@@ -10,7 +10,7 @@ import type { SuggestLinksUseCase } from './suggest-links.js';
 import type { ValidateLinksUseCase } from './validate-links.js';
 import { Domain } from '../../domain/wiki/domain.js';
 import { DocumentLinks } from '../../domain/wiki/document-links.js';
-import { Frontmatter } from '../../domain/wiki/frontmatter.js';
+import { DocumentMetadata } from '../../domain/wiki/document-metadata.js';
 import { HierarchyValidator } from '../../domain/wiki/hierarchy-validator.js';
 import { IndexEntry } from '../../domain/wiki/index-entry.js';
 import { Title } from '../../domain/wiki/title.js';
@@ -40,7 +40,7 @@ export class SaveDocumentUseCase {
     const summary = await this.resolveSummary(input, title.value);
     const domain = await this.resolveDomain(input, title.value);
     const slug = title.toSlug();
-    const parentSlug = normalizeParentSlug(input.parentSlug);
+    const parentSlug = await this.resolveParentSlug(input.parentSlug, domain, slug, title.value);
 
     if (parentSlug !== null) {
       await HierarchyValidator.validateNoCircle(slug, parentSlug, this.documentRepository);
@@ -49,9 +49,14 @@ export class SaveDocumentUseCase {
     const rawContent = input.content ?? '';
     const content = await this.applyLinkSuggestions(rawContent, slug);
     const links = await this.resolveLinks(content, slug);
+    const metadata = DocumentMetadata.from({
+      status: 'published',
+      domain: domain ? domain.value : null,
+      tags: input.tags ?? [],
+    });
     const document = WikiDocument.create({
       title,
-      frontmatter: Frontmatter.create({ tags: input.tags, domain, parent: parentSlug }),
+      metadata,
       content,
       links,
       parentSlug,
@@ -146,6 +151,45 @@ export class SaveDocumentUseCase {
     return this.linkValidator.execute({ content, currentDocumentSlug });
   }
 
+  private async resolveParentSlug(
+    explicitParentSlug: string | null | undefined,
+    domain: Domain | null,
+    currentSlug: string,
+    currentTitle: string,
+  ): Promise<string | null> {
+    if (explicitParentSlug !== undefined) {
+      return normalizeParentSlug(explicitParentSlug);
+    }
+
+    if (domain === null) {
+      return null;
+    }
+
+    const sameDomainRootDocuments = (await this.documentRepository.findAll()).filter((document) => {
+      return (
+        document.title.toSlug() !== currentSlug &&
+        document.metadata.domain?.equals(domain) === true &&
+        document.parentSlug === null
+      );
+    });
+
+    const normalizedTitle = normalizeTitleForHierarchy(currentTitle);
+    const titleMatches = sameDomainRootDocuments.filter((document) => {
+      const candidateTitle = normalizeTitleForHierarchy(document.title.value);
+      return candidateTitle !== normalizedTitle && normalizedTitle.includes(candidateTitle);
+    });
+
+    const candidates = titleMatches.length > 0 ? titleMatches : sameDomainRootDocuments;
+    if (candidates.length !== 1 && titleMatches.length === 0) {
+      return null;
+    }
+
+    return candidates.sort((left, right) => {
+      return left.title.value.length - right.title.value.length ||
+        left.title.value.localeCompare(right.title.value);
+    })[0].title.toSlug();
+  }
+
   private async detectSemanticConflictsAsync(document: WikiDocument): Promise<void> {
     if (!this.semanticConflictDetector || document.metadata.domain === null) {
       return;
@@ -183,4 +227,8 @@ const normalizeParentSlug = (value: string | null | undefined): string | null =>
   }
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
+};
+
+const normalizeTitleForHierarchy = (value: string): string => {
+  return value.toLowerCase().replace(/\s+/g, '');
 };

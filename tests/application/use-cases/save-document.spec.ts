@@ -15,6 +15,7 @@ import type {
 import { DocumentMetadata } from '../../../src/domain/wiki/document-metadata.js';
 import { Domain } from '../../../src/domain/wiki/domain.js';
 import { IndexEntry } from '../../../src/domain/wiki/index-entry.js';
+import { Status } from '../../../src/domain/wiki/status.js';
 import { Title } from '../../../src/domain/wiki/title.js';
 import { WikiDocument } from '../../../src/domain/wiki/document.js';
 
@@ -143,9 +144,16 @@ describe('SaveDocumentUseCase', () => {
     await useCase.execute({ title: 'Orenz Test Account', summary: 'Test account credentials' });
 
     expect(repository.count()).toBe(1);
-    expect(await repository.findByTitle(Title.create('Orenz Test Account'))).not.toBeNull();
+    const saved = await repository.findByTitle(Title.create('Orenz Test Account'));
+    expect(saved).not.toBeNull();
+    expect(saved?.metadata.status.value).toBe('published');
     expect(await indexCatalog.list()).toEqual([
-      IndexEntry.create({ title: 'Orenz Test Account', summary: 'Test account credentials' }),
+      IndexEntry.create({
+        title: 'Orenz Test Account',
+        summary: 'Test account credentials',
+        status: saved!.metadata.status,
+        domain: saved!.metadata.domain,
+      }),
     ]);
   });
 
@@ -159,7 +167,11 @@ describe('SaveDocumentUseCase', () => {
 
     expect(repository.count()).toBe(1);
     expect(await indexCatalog.list()).toEqual([
-      IndexEntry.create({ title: 'Orenz Test Account', summary: 'new summary' }),
+      IndexEntry.create({
+        title: 'Orenz Test Account',
+        summary: 'new summary',
+        status: Status.from('published'),
+      }),
     ]);
   });
 
@@ -197,7 +209,11 @@ describe('SaveDocumentUseCase', () => {
 
     expect(summaryGenerator.callCount).toBe(1);
     expect(await indexCatalog.list()).toEqual([
-      IndexEntry.create({ title: 'Orenz Test Account', summary: 'Generated summary:Orenz Test Account' }),
+      IndexEntry.create({
+        title: 'Orenz Test Account',
+        summary: 'Generated summary:Orenz Test Account',
+        status: Status.from('published'),
+      }),
     ]);
   });
 
@@ -338,6 +354,37 @@ describe('SaveDocumentUseCase', () => {
 
       expect(classifier.callCount).toBe(0);
       expect(result.document.frontmatter.domain).toBeNull();
+    });
+
+    it('auto-classifies write-flow documents and infers a same-domain root parent', async () => {
+      const repository = new FakeDocumentRepository();
+      const indexCatalog = new FakeIndexCatalog();
+      const classifier = new FakeDomainClassifier(Domain.from('shipping'));
+      const useCase = new SaveDocumentUseCase(
+        repository,
+        indexCatalog,
+        new FakeDocumentSummaryGenerator('unused'),
+        classifier,
+      );
+
+      const root = await useCase.execute({
+        title: '배송',
+        summary: '배송 안내',
+        content: '배송 정책 안내',
+      });
+      const child = await useCase.execute({
+        title: '배송 비용',
+        summary: '배송 비용 안내',
+        content: '한국 배송 비용은 3000원입니다.',
+      });
+
+      expect(classifier.callCount).toBe(2);
+      expect(root.document.metadata.domain?.value).toBe('shipping');
+      expect(root.document.metadata.status.value).toBe('published');
+      expect(root.document.parentSlug).toBeNull();
+      expect(child.document.metadata.domain?.value).toBe('shipping');
+      expect(child.document.metadata.status.value).toBe('published');
+      expect(child.document.parentSlug).toBe('배송');
     });
   });
 
