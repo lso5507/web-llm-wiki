@@ -42,6 +42,22 @@ export class InMemoryDocumentRepository implements DocumentRepository {
     return this.documents.get(title.toSlug()) ?? null;
   }
 
+  async findById(id: string): Promise<WikiDocument | null> {
+    return this.documents.get(id) ?? null;
+  }
+
+  async findAll(): Promise<WikiDocument[]> {
+    return [...this.documents.values()];
+  }
+
+  async delete(id: string): Promise<void> {
+    this.documents.delete(id);
+  }
+
+  async exists(slug: string): Promise<boolean> {
+    return this.documents.has(slug);
+  }
+
   private getStoredBytes(): number {
     return [...this.documents.values()].reduce((total, document) => total + this.getDocumentSize(document), 0);
   }
