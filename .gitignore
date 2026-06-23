@@ -6,3 +6,12 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# OpenCode session data
+.omo/
+
+# Temporary screenshots
+*.png
