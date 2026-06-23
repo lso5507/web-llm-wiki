@@ -127,24 +127,6 @@ export const renderHomePage = (): string => {
         color: var(--muted);
       }
 
-      #parent-select {
-        width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--panel);
-        color: var(--text);
-        font: inherit;
-        font-size: 14px;
-        padding: 10px 12px;
-        cursor: pointer;
-        transition: border-color 0.2s;
-      }
-
-      #parent-select:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-
       #title-input {
         width: 100%;
         border: 1px solid var(--line);
@@ -1557,13 +1539,6 @@ export const renderHomePage = (): string => {
           </div>
 
           <div class="input-group">
-            <label for="parent-select">부모 문서 (선택)</label>
-            <select id="parent-select" name="parentSlug">
-              <option value="">— 최상위 문서 —</option>
-            </select>
-          </div>
-
-          <div class="input-group">
             <label for="content-input">내용</label>
             <textarea id="content-input" name="content"></textarea>
           </div>
@@ -1723,7 +1698,6 @@ export const renderHomePage = (): string => {
       // Form elements
       const form = document.getElementById('write-form');
       const titleInput = document.getElementById('title-input');
-      const parentSelect = document.getElementById('parent-select');
       const saveButton = document.getElementById('save-button');
       const indexList = document.getElementById('index-list');
 
@@ -1857,27 +1831,6 @@ export const renderHomePage = (): string => {
       let lastEntries = [];
       const renderCurrentEntries = () => renderIndex(lastEntries);
 
-      const populateParentSelect = (entries) => {
-        const currentValue = parentSelect.value;
-        const currentSlug = editingDocumentId;
-        const sorted = [...entries].sort((a, b) =>
-          (a.title || '').localeCompare(b.title || ''),
-        );
-        const options = ['<option value="">— 최상위 문서 —</option>'];
-        sorted.forEach(entry => {
-          if (currentSlug && entry.id === currentSlug) return;
-          options.push(
-            '<option value="' + escapeHtml(entry.id) + '">' +
-              escapeHtml(entry.title) +
-            '</option>',
-          );
-        });
-        parentSelect.innerHTML = options.join('');
-        if (currentValue && parentSelect.querySelector('option[value="' + currentValue.replace(/"/g, '\\"') + '"]')) {
-          parentSelect.value = currentValue;
-        }
-      };
-
       // Filter bar rendering
       const renderStatusChips = () => {
         Array.from(statusChipsRoot.querySelectorAll('.chip')).forEach(chip => {
@@ -1987,7 +1940,6 @@ export const renderHomePage = (): string => {
           renderDomainChips(availableDomains);
           renderTagChips(availableTags);
           renderIndex(entries);
-          populateParentSelect(entries);
         } catch (error) {
           if (requestId !== pendingRequest) return;
           console.error('Search failed:', error);
@@ -2012,7 +1964,6 @@ export const renderHomePage = (): string => {
           updateResultsCount(entries);
           renderStatusChips();
           renderIndex(entries);
-          populateParentSelect(entries);
         } catch (error) {
           console.error('Initial load failed:', error);
           indexList.innerHTML = '<div class="empty-state">목록을 불러오지 못했습니다.</div>';
@@ -2081,14 +2032,12 @@ export const renderHomePage = (): string => {
         try {
           const url = isEditing ? '/documents/' + encodeURIComponent(editingDocumentId) : '/documents';
           const method = isEditing ? 'PUT' : 'POST';
-          const parentValue = parentSelect.value || null;
           const response = await fetch(url, {
             method,
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
               title: titleInput.value,
               content: easyMDE.value(),
-              parentSlug: parentValue,
             }),
           });
 
@@ -2133,8 +2082,6 @@ export const renderHomePage = (): string => {
         editingDocumentId = document_.id;
         titleInput.value = document_.title;
         easyMDE.value(document_.content || '');
-        populateParentSelect(lastEntries);
-        parentSelect.value = document_.parentSlug || '';
         saveButton.textContent = '수정';
         cancelButton.classList.add('visible');
         editBanner.classList.add('visible');
@@ -2143,8 +2090,6 @@ export const renderHomePage = (): string => {
 
       const exitEditMode = () => {
         editingDocumentId = null;
-        parentSelect.value = '';
-        populateParentSelect(lastEntries);
         saveButton.textContent = '저장하기';
         cancelButton.classList.remove('visible');
         editBanner.classList.remove('visible');
