@@ -1,3 +1,6 @@
+import { Domain } from './domain.js';
+import { Status } from './status.js';
+
 export class InvalidIndexEntryError extends Error {
   constructor(message: string) {
     super(message);
@@ -9,6 +12,8 @@ type IndexEntryInput = {
   title: string;
   summary: string;
   sourceCount?: number;
+  status?: Status;
+  domain?: Domain | null;
 };
 
 export class IndexEntry {
@@ -16,6 +21,8 @@ export class IndexEntry {
     public readonly title: string,
     public readonly summary: string,
     public readonly sourceCount: number,
+    public readonly status: Status,
+    public readonly domain: Domain | null,
   ) {}
 
   static create(input: IndexEntryInput): IndexEntry {
@@ -30,7 +37,13 @@ export class IndexEntry {
       throw new InvalidIndexEntryError('Index entry summary must not be empty');
     }
 
-    return new IndexEntry(title, summary, input.sourceCount ?? 0);
+    return new IndexEntry(
+      title,
+      summary,
+      input.sourceCount ?? 0,
+      input.status ?? Status.from('draft'),
+      input.domain ?? null,
+    );
   }
 
   static compareByTitle(left: IndexEntry, right: IndexEntry): number {

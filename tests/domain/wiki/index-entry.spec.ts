@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { Domain } from '../../../src/domain/wiki/domain.js';
 import { InvalidIndexEntryError, IndexEntry } from '../../../src/domain/wiki/index-entry.js';
+import { Status } from '../../../src/domain/wiki/status.js';
 
 describe('IndexEntry', () => {
   it('creates an entry from title and summary', () => {
@@ -25,5 +27,45 @@ describe('IndexEntry', () => {
     const bar = IndexEntry.create({ title: 'Bar', summary: 'bar' });
 
     expect([foo, bar].sort(IndexEntry.compareByTitle).map((entry) => entry.title)).toEqual(['Bar', 'Foo']);
+  });
+
+  it('defaults status to draft and domain to null when not provided', () => {
+    const entry = IndexEntry.create({
+      title: 'Foo',
+      summary: 'foo summary',
+    });
+
+    expect(entry.status.value).toBe('draft');
+    expect(entry.domain).toBeNull();
+  });
+
+  it('accepts a custom status', () => {
+    const entry = IndexEntry.create({
+      title: 'Foo',
+      summary: 'foo summary',
+      status: Status.from('review'),
+    });
+
+    expect(entry.status.value).toBe('review');
+  });
+
+  it('accepts a custom domain', () => {
+    const entry = IndexEntry.create({
+      title: 'Foo',
+      summary: 'foo summary',
+      domain: Domain.from('tech-stack'),
+    });
+
+    expect(entry.domain?.value).toBe('tech-stack');
+  });
+
+  it('accepts an explicit null domain', () => {
+    const entry = IndexEntry.create({
+      title: 'Foo',
+      summary: 'foo summary',
+      domain: null,
+    });
+
+    expect(entry.domain).toBeNull();
   });
 });
