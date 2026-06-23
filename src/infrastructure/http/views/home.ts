@@ -53,6 +53,9 @@ export const renderHomePage = (): string => {
         background: var(--panel);
         border-bottom: 1px solid var(--line);
         padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .logo {
@@ -60,6 +63,132 @@ export const renderHomePage = (): string => {
         font-weight: 600;
         color: var(--text);
         letter-spacing: -0.02em;
+      }
+
+      /* Notification Icon */
+      .notification-icon {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+
+      .notification-icon:hover {
+        background: var(--accent-soft);
+      }
+
+      .notification-icon svg {
+        width: 20px;
+        height: 20px;
+        color: var(--muted);
+      }
+
+      .notification-icon:hover svg {
+        color: var(--accent);
+      }
+
+      .notification-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        background: #ef4444;
+        color: white;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--panel);
+      }
+
+      .notification-badge.hidden {
+        display: none;
+      }
+
+      /* Notification Dropdown */
+      .notification-dropdown {
+        position: absolute;
+        top: 56px;
+        right: 24px;
+        width: 380px;
+        max-height: 500px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        display: none;
+        flex-direction: column;
+        z-index: 101;
+      }
+
+      .notification-dropdown.active {
+        display: flex;
+      }
+
+      .notification-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--line);
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .notification-list {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 420px;
+      }
+
+      .notification-item {
+        padding: 16px;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .notification-item:hover {
+        background: var(--accent-soft);
+      }
+
+      .notification-item:last-child {
+        border-bottom: none;
+      }
+
+      .notification-item-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        color: var(--text);
+      }
+
+      .notification-item-meta {
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .notification-item-conflict {
+        color: #ef4444;
+        font-weight: 500;
+      }
+
+      .notification-empty {
+        padding: 32px 16px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
       }
 
       /* Tabs */
@@ -1510,7 +1639,20 @@ export const renderHomePage = (): string => {
   <body>
     <header class="header">
       <div class="logo">LLM Wiki</div>
+      <button class="notification-icon" id="notification-btn" aria-label="알림">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        <span id="notification-badge" class="notification-badge hidden">0</span>
+      </button>
     </header>
+
+    <div id="notification-dropdown" class="notification-dropdown">
+      <div class="notification-header">의미론적 충돌 알림</div>
+      <div id="notification-list" class="notification-list">
+        <div class="notification-empty">충돌이 감지되지 않았습니다</div>
+      </div>
+    </div>
 
     <nav class="tabs">
       <button class="tab-button active" data-tab="write">Write</button>
@@ -1694,6 +1836,90 @@ export const renderHomePage = (): string => {
           document.getElementById(targetTab + '-tab').classList.add('active');
         });
       });
+
+      // Notification dropdown
+      const notificationBtn = document.getElementById('notification-btn');
+      const notificationDropdown = document.getElementById('notification-dropdown');
+      const notificationBadge = document.getElementById('notification-badge');
+      const notificationList = document.getElementById('notification-list');
+
+      const fetchConflicts = async () => {
+        try {
+          const response = await fetch('/conflicts');
+          const conflicts = await response.json();
+          return conflicts;
+        } catch (error) {
+          console.error('Failed to fetch conflicts:', error);
+          return [];
+        }
+      };
+
+      const renderConflicts = (conflicts) => {
+        if (conflicts.length === 0) {
+          notificationBadge.classList.add('hidden');
+          notificationList.innerHTML = '<div class="notification-empty">충돌이 감지되지 않았습니다</div>';
+          return;
+        }
+
+        notificationBadge.textContent = conflicts.length.toString();
+        notificationBadge.classList.remove('hidden');
+
+        notificationList.innerHTML = conflicts.map(conflict => {
+          const confidenceBadge = conflict.confidence === 'high' ? '높음' : 
+                                  conflict.confidence === 'medium' ? '중간' : '낮음';
+          const confidenceColor = conflict.confidence === 'high' ? '#ef4444' : 
+                                  conflict.confidence === 'medium' ? '#f59e0b' : '#64748b';
+          return \`
+            <div class="notification-item" data-document-id="\${conflict.documentId}">
+              <div class="notification-item-title">\${escapeHtml(conflict.documentTitle)}</div>
+              <div class="notification-item-meta">
+                <span class="notification-item-conflict">충돌: \${escapeHtml(conflict.conflictingDocumentTitle)}</span>
+                <span>·</span>
+                <span style="color: \${confidenceColor}; font-weight: 500">신뢰도: \${confidenceBadge}</span>
+              </div>
+            </div>
+          \`;
+        }).join('');
+
+        notificationList.querySelectorAll('.notification-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const documentId = item.dataset.documentId;
+            notificationDropdown.classList.remove('active');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            tabButtons[1].classList.add('active');
+            document.getElementById('browse-tab').classList.add('active');
+            loadAndDisplayDocument(documentId);
+          });
+        });
+      };
+
+      notificationBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('active');
+        if (notificationDropdown.classList.contains('active')) {
+          const conflicts = await fetchConflicts();
+          renderConflicts(conflicts);
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!notificationDropdown.contains(e.target) && e.target !== notificationBtn) {
+          notificationDropdown.classList.remove('active');
+        }
+      });
+
+      const updateNotificationBadge = async () => {
+        const conflicts = await fetchConflicts();
+        if (conflicts.length > 0) {
+          notificationBadge.textContent = conflicts.length.toString();
+          notificationBadge.classList.remove('hidden');
+        } else {
+          notificationBadge.classList.add('hidden');
+        }
+      };
+
+      updateNotificationBadge();
 
       // Form elements
       const form = document.getElementById('write-form');

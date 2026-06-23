@@ -1,11 +1,18 @@
 import { Hono } from 'hono';
 
 import type { DocumentRepository } from '../../application/ports/document-repository.js';
-import type { DocumentSummaryGenerator } from '../../application/ports/document-summary-generator.js';
+import type {
+  DocumentSummaryGenerator,
+  DocumentSummaryResult,
+} from '../../application/ports/document-summary-generator.js';
 import type { DomainClassifier } from '../../application/ports/domain-classifier.js';
 import type { IndexCatalog } from '../../application/ports/index-catalog.js';
 import type { QuestionAnswerer } from '../../application/ports/question-answerer.js';
 import type { SemanticConflictDetector } from '../../application/ports/semantic-conflict-detector.js';
+import type { EmbeddingGenerator } from '../../application/ports/embedding-generator.js';
+import type { EmbeddingStore } from '../../application/ports/embedding-store.js';
+import type { DomainNormalizer } from '../../application/services/domain-normalizer.js';
+import { SemanticIndexSearcher } from '../../application/services/semantic-index-searcher.js';
 import { SummaryGeneratorNotConfiguredError } from '../../application/errors/summary-generator-not-configured-error.js';
 import { AskAIUseCase } from '../../application/use-cases/ask-ai.js';
 import { DetectConflictsUseCase } from '../../application/use-cases/detect-conflicts.js';
@@ -17,6 +24,8 @@ import { SuggestLinksUseCase } from '../../application/use-cases/suggest-links.j
 import { UpdateDocumentUseCase } from '../../application/use-cases/update-document.js';
 import { DeleteDocumentUseCase } from '../../application/use-cases/delete-document.js';
 import { ValidateLinksUseCase } from '../../application/use-cases/validate-links.js';
+import { ListConflictsUseCase } from '../../application/use-cases/list-conflicts.js';
+import { OpenRouterSemanticDomainNormalizer } from '../../application/services/openrouter-semantic-domain-normalizer.js';
 import { createAskAIRouter } from '../http/routes/ask-ai.js';
 import { createDocumentsRouter } from '../http/routes/documents.js';
 import { createGetDocumentRouter } from '../http/routes/get-document.js';
@@ -24,15 +33,18 @@ import { createIndexRouter } from '../http/routes/index.js';
 import { createSearchDocumentsRouter } from '../http/routes/search-documents.js';
 import { createUpdateDocumentRouter } from '../http/routes/update-document.js';
 import { createDeleteDocumentRouter } from '../http/routes/delete-document.js';
+import { createListConflictsRouter } from '../http/routes/list-conflicts.js';
 import { renderHomePage } from '../http/views/home.js';
 import { OpenRouterDocumentSummaryGenerator } from '../llm/openrouter-document-summary-generator.js';
 import { OpenRouterDomainClassifier } from '../llm/openrouter-domain-classifier.js';
 import { OpenRouterQuestionAnswerer } from '../llm/openrouter-question-answerer.js';
 import { OpenRouterSemanticConflictDetector } from '../llm/openrouter-semantic-conflict-detector.js';
+import { LocalEmbeddingGenerator } from '../llm/local-embedding-generator.js';
 import { FileSystemDocumentRepository } from '../persistence/filesystem/file-system-document-repository.js';
 import { FileSystemIndexCatalog } from '../persistence/filesystem/file-system-index-catalog.js';
 import { InMemoryDocumentRepository } from '../persistence/in-memory/in-memory-document-repository.js';
 import { InMemoryIndexCatalog } from '../persistence/in-memory/in-memory-index-catalog.js';
+import { InMemoryEmbeddingStore } from '../persistence/in-memory/in-memory-embedding-store.js';
 import { loadEnvConfig } from './env.js';
 
 type OpenRouterOptions = {
@@ -51,6 +63,7 @@ type OpenRouterOptions = {
   semanticConflictDetector?: SemanticConflictDetector | null;
   semanticConflictDetectorModel?: string;
   semanticConflictDetectorTimeoutMs?: number;
+  embeddingGenerator?: EmbeddingGenerator | null;
 };
 
 type StorageOptions = {
@@ -67,7 +80,7 @@ type CreateAppOptions = {
 };
 
 class SummaryRequiredDocumentSummaryGenerator implements DocumentSummaryGenerator {
-  async generate(): Promise<string> {
+  async generate(): Promise<DocumentSummaryResult> {
     throw new SummaryGeneratorNotConfiguredError();
   }
 }
@@ -95,6 +108,18 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     openRouterApiKey,
     openRouterModel,
   );
+  const domainNormalizer: DomainNormalizer | undefined = openRouterApiKey
+    ? new OpenRouterSemanticDomainNormalizer({
+        apiKey: openRouterApiKey,
+        model: openRouterModel,
+      })
+    : undefined;
+  
+  const embeddingProvider = process.env.EMBEDDING_PROVIDER ?? 'local';
+  const embeddingGenerator = resolveEmbeddingGenerator(embeddingProvider, openRouterOptions);
+  const embeddingStore: EmbeddingStore = new InMemoryEmbeddingStore();
+  const indexSearcher = embeddingGenerator ? new SemanticIndexSearcher(embeddingStore) : undefined;
+  
   const validateLinksUseCase = new ValidateLinksUseCase(documentRepository);
   const suggestLinksUseCase = new SuggestLinksUseCase(documentRepository);
   const detectConflictsUseCase = new DetectConflictsUseCase();
@@ -102,6 +127,7 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     documentRepository,
     indexCatalog,
     documentSummaryGenerator,
+    domainNormalizer,
     domainClassifier,
     validateLinksUseCase,
     suggestLinksUseCase,
@@ -119,7 +145,10 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     detectConflictsUseCase,
   );
   const deleteDocumentUseCase = new DeleteDocumentUseCase(documentRepository, indexCatalog);
-  const askAIUseCase = questionAnswerer ? new AskAIUseCase(documentRepository, questionAnswerer) : null;
+  const listConflictsUseCase = new ListConflictsUseCase(documentRepository);
+  const askAIUseCase = questionAnswerer 
+    ? new AskAIUseCase(documentRepository, questionAnswerer, embeddingGenerator, indexSearcher)
+    : null;
 
   const app = new Hono();
 
@@ -152,6 +181,7 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
   );
   app.route('/documents', createDeleteDocumentRouter({ deleteDocumentUseCase }));
   app.route('/index', createIndexRouter({ listIndexUseCase }));
+  app.route('/conflicts', createListConflictsRouter({ listConflictsUseCase }));
   app.route(
     '/ask',
     createAskAIRouter({
@@ -161,6 +191,24 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
   );
 
   return app;
+};
+
+const resolveEmbeddingGenerator = (
+  provider: string,
+  openRouterOptions: OpenRouterOptions | undefined,
+): EmbeddingGenerator | undefined => {
+  if (openRouterOptions?.embeddingGenerator === null) {
+    return undefined;
+  }
+  if (openRouterOptions?.embeddingGenerator) {
+    return openRouterOptions.embeddingGenerator;
+  }
+  
+  if (provider === 'local') {
+    return new LocalEmbeddingGenerator();
+  }
+  
+  return undefined;
 };
 
 const createPersistenceAdapters = (

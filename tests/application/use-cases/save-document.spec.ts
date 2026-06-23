@@ -7,7 +7,10 @@ import { ValidateLinksUseCase } from '../../../src/application/use-cases/validat
 import type { DomainClassifier } from '../../../src/application/ports/domain-classifier.js';
 import type { IndexCatalog } from '../../../src/application/ports/index-catalog.js';
 import type { DocumentRepository } from '../../../src/application/ports/document-repository.js';
-import type { DocumentSummaryGenerator } from '../../../src/application/ports/document-summary-generator.js';
+import type {
+  DocumentSummaryGenerator,
+  DocumentSummaryResult,
+} from '../../../src/application/ports/document-summary-generator.js';
 import type {
   SemanticConflictAnalysis,
   SemanticConflictDetector,
@@ -72,9 +75,17 @@ class FakeDocumentSummaryGenerator implements DocumentSummaryGenerator {
 
   constructor(private readonly generatedSummary: string) {}
 
-  async generate(input: { title: string; content: string; tags?: string[] }): Promise<string> {
+  async generate(input: {
+    title: string;
+    content: string;
+    tags?: string[];
+  }): Promise<DocumentSummaryResult> {
     this.callCount += 1;
-    return `${this.generatedSummary}:${input.title}`;
+    return {
+      summary: `${this.generatedSummary}:${input.title}`,
+      domain: null,
+      confidence: 1.0,
+    };
   }
 }
 
@@ -239,6 +250,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('Generated'),
+        undefined,
         classifier,
       );
 
@@ -263,6 +275,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('Generated'),
+        undefined,
         classifier,
       );
 
@@ -301,6 +314,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('Generated'),
+        undefined,
         classifier,
       );
 
@@ -322,6 +336,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('Generated'),
+        undefined,
         classifier,
       );
 
@@ -343,7 +358,8 @@ describe('SaveDocumentUseCase', () => {
       const useCase = new SaveDocumentUseCase(
         repository,
         indexCatalog,
-        new FakeDocumentSummaryGenerator('unused'),
+        new FakeDocumentSummaryGenerator('Generated'),
+        undefined,
         classifier,
       );
 
@@ -364,6 +380,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         classifier,
       );
 
@@ -404,6 +421,7 @@ describe('SaveDocumentUseCase', () => {
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
         undefined,
+        undefined,
         linkValidator,
       );
 
@@ -429,6 +447,7 @@ describe('SaveDocumentUseCase', () => {
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
         undefined,
+        undefined,
         linkValidator,
       );
 
@@ -451,6 +470,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         linkValidator,
       );
@@ -502,6 +522,7 @@ describe('SaveDocumentUseCase', () => {
         new FakeDocumentSummaryGenerator('unused'),
         undefined,
         undefined,
+        undefined,
         linkSuggester,
       );
 
@@ -529,6 +550,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         linkValidator,
         linkSuggester,
@@ -563,6 +585,7 @@ describe('SaveDocumentUseCase', () => {
         new FakeDocumentSummaryGenerator('unused'),
         undefined,
         undefined,
+        undefined,
         linkSuggester,
       );
 
@@ -587,6 +610,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         undefined,
         failingSuggester,
@@ -648,6 +672,7 @@ describe('SaveDocumentUseCase', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         conflictDetector,
       );
 
@@ -680,6 +705,7 @@ describe('SaveDocumentUseCase', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         conflictDetector,
       );
 
@@ -705,6 +731,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -750,6 +777,7 @@ describe('SaveDocumentUseCase', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         conflictDetector,
       );
 
@@ -784,6 +812,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -862,6 +891,7 @@ describe('SaveDocumentUseCase', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         semanticConflictDetector,
       );
 
@@ -900,6 +930,7 @@ describe('SaveDocumentUseCase', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         semanticConflictDetector,
       );
 
@@ -923,6 +954,7 @@ describe('SaveDocumentUseCase', () => {
         repository,
         indexCatalog,
         new FakeDocumentSummaryGenerator('unused'),
+        undefined,
         undefined,
         undefined,
         undefined,

@@ -1,7 +1,9 @@
 import type {
   DocumentSummaryGenerator,
+  DocumentSummaryResult,
   GenerateDocumentSummaryInput,
 } from '../../application/ports/document-summary-generator.js';
+import { DOMAIN_CATALOG } from '../../domain/wiki/taxonomy/domain-taxonomy.js';
 
 type OpenRouterDocumentSummaryGeneratorOptions = {
   apiKey: string;
@@ -26,7 +28,11 @@ export class OpenRouterDocumentSummaryGenerator implements DocumentSummaryGenera
     this.endpoint = `${options.baseUrl ?? 'https://openrouter.ai/api/v1'}/chat/completions`;
   }
 
-  async generate(input: GenerateDocumentSummaryInput): Promise<string> {
+  async generate(input: GenerateDocumentSummaryInput): Promise<DocumentSummaryResult> {
+    const domainExamples = DOMAIN_CATALOG.slice(0, 8)
+      .map((d) => `"${d.label}"`)
+      .join(', ');
+
     const response = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
@@ -40,15 +46,22 @@ export class OpenRouterDocumentSummaryGenerator implements DocumentSummaryGenera
         messages: [
           {
             role: 'system',
-            content:
-              'You write short factual Korean summaries for wiki index entries. Respond with one concise sentence only.',
+            content: `당신은 위키 문서 요약 및 분류 전문가입니다.
+주어진 문서를 150-300자로 요약하고, 적절한 도메인 label(한국어)을 추출하세요.
+
+응답 형식 (JSON):
+{
+  "summary": "한국어 요약 (150-300자)",
+  "domain": "도메인 label (한국어, 예: ${domainExamples})",
+  "confidence": 0.0~1.0
+}`,
           },
           {
             role: 'user',
             content: [
-              `Title: ${input.title}`,
-              input.tags?.length ? `Tags: ${input.tags.join(', ')}` : null,
-              'Document content:',
+              `제목: ${input.title}`,
+              input.tags?.length ? `태그: ${input.tags.join(', ')}` : null,
+              '내용:',
               input.content,
             ]
               .filter(Boolean)
@@ -56,6 +69,7 @@ export class OpenRouterDocumentSummaryGenerator implements DocumentSummaryGenera
           },
         ],
         temperature: 0.2,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -64,18 +78,37 @@ export class OpenRouterDocumentSummaryGenerator implements DocumentSummaryGenera
     }
 
     const body = (await response.json()) as OpenRouterResponse;
-    const content = body.choices?.[0]?.message?.content;
-    const summary = Array.isArray(content)
-      ? content
-          .map((item) => item.text ?? '')
-          .join('')
-          .trim()
-      : content?.trim();
+    const content = this.extractContent(body);
 
-    if (!summary) {
-      throw new Error('OpenRouter returned an empty summary');
+    if (!content) {
+      throw new Error('OpenRouter returned empty content');
     }
 
-    return summary;
+    const parsed = JSON.parse(content) as {
+      summary: string;
+      domain: string;
+      confidence: number;
+    };
+
+    if (!parsed.summary?.trim()) {
+      throw new Error('OpenRouter returned empty summary');
+    }
+
+    return {
+      summary: parsed.summary.trim(),
+      domain: parsed.domain?.trim() || '기타',
+      confidence: Math.max(0, Math.min(1, parsed.confidence || 0.5)),
+    };
+  }
+
+  private extractContent(body: OpenRouterResponse): string | null {
+    const content = body.choices?.[0]?.message?.content;
+    if (typeof content === 'string') {
+      return content;
+    }
+    if (Array.isArray(content)) {
+      return content.map((item) => item.text ?? '').join('');
+    }
+    return null;
   }
 }

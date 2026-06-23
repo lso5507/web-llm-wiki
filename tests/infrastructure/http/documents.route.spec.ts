@@ -50,7 +50,11 @@ describe('POST /documents', () => {
         model: 'openai/gpt-4o-mini',
         summaryGenerator: {
           async generate() {
-            return 'Generated summary';
+            return {
+              summary: 'Generated summary',
+              domain: null,
+              confidence: 1.0,
+            };
           },
         },
       },
@@ -104,7 +108,11 @@ describe('POST /documents', () => {
         model: 'openai/gpt-4o-mini',
         summaryGenerator: {
           async generate() {
-            return 'Generated summary';
+            return {
+              summary: 'Generated summary',
+              domain: null,
+              confidence: 1.0,
+            };
           },
         },
       },

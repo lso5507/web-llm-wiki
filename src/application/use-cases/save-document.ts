@@ -1,13 +1,17 @@
 import type { SaveDocumentInput } from '../dto/save-document.input.js';
 import { ContentRequiredForSummaryGenerationError } from '../errors/content-required-for-summary-generation-error.js';
 import type { DocumentRepository } from '../ports/document-repository.js';
-import type { DocumentSummaryGenerator } from '../ports/document-summary-generator.js';
+import type {
+  DocumentSummaryGenerator,
+  DocumentSummaryResult,
+} from '../ports/document-summary-generator.js';
 import type { DomainClassifier } from '../ports/domain-classifier.js';
 import type { IndexCatalog } from '../ports/index-catalog.js';
 import type { SemanticConflictDetector } from '../ports/semantic-conflict-detector.js';
 import type { DetectConflictsUseCase } from './detect-conflicts.js';
 import type { SuggestLinksUseCase } from './suggest-links.js';
 import type { ValidateLinksUseCase } from './validate-links.js';
+import type { DomainNormalizer } from '../services/domain-normalizer.js';
 import { Domain } from '../../domain/wiki/domain.js';
 import { DocumentLinks } from '../../domain/wiki/document-links.js';
 import { DocumentMetadata } from '../../domain/wiki/document-metadata.js';
@@ -28,6 +32,7 @@ export class SaveDocumentUseCase {
     private readonly documentRepository: DocumentRepository,
     private readonly indexCatalog: IndexCatalog,
     private readonly documentSummaryGenerator: DocumentSummaryGenerator,
+    private readonly domainNormalizer?: DomainNormalizer,
     private readonly domainClassifier?: DomainClassifier,
     private readonly linkValidator?: ValidateLinksUseCase,
     private readonly linkSuggester?: SuggestLinksUseCase,
@@ -37,8 +42,8 @@ export class SaveDocumentUseCase {
 
   async execute(input: SaveDocumentInput): Promise<SaveDocumentResult> {
     const title = Title.create(input.title);
-    const summary = await this.resolveSummary(input, title.value);
-    const domain = await this.resolveDomain(input, title.value);
+    const summaryResult = await this.resolveSummary(input, title.value);
+    const domain = await this.resolveDomain(input, title.value, summaryResult);
     const slug = title.toSlug();
     const parentSlug = await this.resolveParentSlug(input.parentSlug, domain, slug, title.value);
 
@@ -63,7 +68,7 @@ export class SaveDocumentUseCase {
     });
     const indexEntry = IndexEntry.create({
       title: title.value,
-      summary,
+      summary: summaryResult.summary,
       sourceCount: document.frontmatter.sources.length,
       status: document.metadata.status,
       domain: document.metadata.domain,
@@ -84,14 +89,17 @@ export class SaveDocumentUseCase {
 
     return {
       document: finalDocument,
-      summary,
+      summary: summaryResult.summary,
       status: 'completed',
     };
   }
 
-  private async resolveSummary(input: SaveDocumentInput, title: string): Promise<string> {
-    if (input.summary !== undefined) {
-      return input.summary;
+  private async resolveSummary(
+    input: SaveDocumentInput,
+    title: string,
+  ): Promise<DocumentSummaryResult> {
+    if (input.summary !== undefined && input.summary !== null) {
+      return { summary: input.summary, domain: null, confidence: 1.0 };
     }
 
     if (!input.content?.trim()) {
@@ -105,17 +113,38 @@ export class SaveDocumentUseCase {
     });
   }
 
-  private async resolveDomain(input: SaveDocumentInput, title: string): Promise<Domain | null> {
+  private async resolveDomain(
+    input: SaveDocumentInput,
+    title: string,
+    summaryResult: DocumentSummaryResult,
+  ): Promise<Domain | null> {
     if (input.domain !== undefined && input.domain !== null) {
       return Domain.from(input.domain);
     }
 
-    if (!this.domainClassifier) {
-      return null;
+    const koreanLabel = summaryResult.domain;
+    if (!koreanLabel || !this.domainNormalizer) {
+      return this.fallbackClassifyDomain(input.content, title);
     }
 
-    const content = input.content?.trim();
-    if (!content) {
+    try {
+      const existingDomains = await this.getExistingDomains();
+      const result = await this.domainNormalizer.normalize(koreanLabel, {
+        title,
+        content: input.content ?? '',
+        existingDomains,
+      });
+      return result.domain;
+    } catch {
+      return this.fallbackClassifyDomain(input.content, title);
+    }
+  }
+
+  private async fallbackClassifyDomain(
+    content: string | undefined,
+    title: string,
+  ): Promise<Domain | null> {
+    if (!this.domainClassifier || !content?.trim()) {
       return null;
     }
 
@@ -124,6 +153,33 @@ export class SaveDocumentUseCase {
     } catch {
       return null;
     }
+  }
+
+  private async getExistingDomains() {
+    const documents = await this.documentRepository.findAll();
+    const domainMap = new Map<string, { label: string; count: number }>();
+
+    for (const doc of documents) {
+      const domain = doc.metadata.domain;
+      if (!domain) continue;
+
+      const domainId = domain.value;
+      const existing = domainMap.get(domainId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        domainMap.set(domainId, {
+          label: doc.title.value.split(' ')[0],
+          count: 1,
+        });
+      }
+    }
+
+    return Array.from(domainMap.entries()).map(([id, info]) => ({
+      id,
+      label: info.label,
+      documentCount: info.count,
+    }));
   }
 
   private async applyLinkSuggestions(
