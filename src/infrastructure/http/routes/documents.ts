@@ -18,6 +18,7 @@ type CreateDocumentPayload = {
   summary?: string;
   content?: string;
   tags?: string[];
+  domain?: string;
   forceSemanticConflicts?: boolean;
 };
 
@@ -54,6 +55,7 @@ export const createDocumentsRouter = ({ saveDocumentUseCase, maxRequestBytes }: 
       if (payload.summary !== undefined) useCaseInput.summary = payload.summary;
       if (payload.content !== undefined) useCaseInput.content = payload.content;
       if (payload.tags !== undefined) useCaseInput.tags = payload.tags;
+      if (payload.domain !== undefined) useCaseInput.domain = payload.domain;
       if (payload.forceSemanticConflicts !== undefined) {
         useCaseInput.forceSemanticConflicts = payload.forceSemanticConflicts;
       }
@@ -130,6 +132,10 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     throw new InvalidDocumentPayloadError('content must be a string when provided');
   }
 
+  if (candidate.domain !== undefined && typeof candidate.domain !== 'string') {
+    throw new InvalidDocumentPayloadError('domain must be a string when provided');
+  }
+
   if (candidate.tags !== undefined) {
     if (!Array.isArray(candidate.tags) || candidate.tags.some((tag) => typeof tag !== 'string')) {
       throw new InvalidDocumentPayloadError('tags must be an array of strings when provided');
@@ -172,6 +178,7 @@ const validateCreateDocumentPayload = (payload: unknown): CreateDocumentPayload 
     summary: candidate.summary as string | undefined,
     content: candidate.content as string | undefined,
     tags: candidate.tags as string[] | undefined,
+    domain: candidate.domain as string | undefined,
     forceSemanticConflicts: candidate.forceSemanticConflicts as boolean | undefined,
   };
 };

@@ -1886,6 +1886,216 @@ export const renderHomePage = (): string => {
         opacity: 1;
       }
 
+      /* Domain confirm modal */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .modal-backdrop.hidden {
+        display: none;
+      }
+
+      .modal {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+        width: 100%;
+        max-width: 480px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .modal-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.01em;
+      }
+
+      .modal-close {
+        border: 0;
+        background: transparent;
+        font-size: 20px;
+        line-height: 1;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .modal-close:hover {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .modal-body {
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .modal-field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .modal-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .modal-confidence-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+
+      .modal-confidence-badge--high { background: rgba(21, 128, 61, 0.12); color: #15803d; }
+      .modal-confidence-badge--medium { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+      .modal-confidence-badge--low { background: rgba(185, 28, 28, 0.1); color: #b91c1c; }
+
+      .modal-summary-text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text);
+        padding: 10px 12px;
+        background: var(--bg);
+        border-radius: 6px;
+        border: 1px solid var(--line);
+      }
+
+      .modal-domain-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .modal-domain-select {
+        flex: 1;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+        padding: 9px 12px;
+        transition: border-color 0.2s;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+        cursor: pointer;
+      }
+
+      .modal-domain-select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .modal-new-domain-input {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+        padding: 9px 12px;
+        transition: border-color 0.2s;
+        width: 100%;
+      }
+
+      .modal-new-domain-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .modal-new-domain-hint {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .modal-footer {
+        padding: 14px 20px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .modal-button {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 9px 18px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .modal-button:hover {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .modal-button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      .modal-button.primary:hover {
+        opacity: 0.9;
+      }
+
+      .modal-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .modal-loading {
+        padding: 32px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
       @media (max-width: 768px) {
         .container {
           padding: 24px 16px;
@@ -2128,6 +2338,26 @@ export const renderHomePage = (): string => {
     <div id="detail-backdrop" class="detail-backdrop" hidden></div>
 
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Domain confirm modal -->
+    <div id="domain-modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="domain-modal-title">
+      <div class="modal">
+        <header class="modal-header">
+          <span id="domain-modal-title" class="modal-title">저장 전 도메인 확인</span>
+          <button id="domain-modal-close" class="modal-close" type="button" aria-label="닫기">×</button>
+        </header>
+        <div id="domain-modal-body" class="modal-body">
+          <div class="modal-loading">
+            <span class="loading-spinner"></span>
+            AI가 도메인을 분석하는 중입니다…
+          </div>
+        </div>
+        <footer id="domain-modal-footer" class="modal-footer" style="display:none">
+          <button id="domain-modal-cancel" class="modal-button" type="button">취소</button>
+          <button id="domain-modal-confirm" class="modal-button primary" type="button">이대로 저장</button>
+        </footer>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
     <script>
@@ -2581,54 +2811,204 @@ export const renderHomePage = (): string => {
         performSearch();
       });
 
-      // Form submission
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        saveButton.disabled = true;
+      // Domain confirm modal
+      const domainModalBackdrop = document.getElementById('domain-modal-backdrop');
+      const domainModalBody = document.getElementById('domain-modal-body');
+      const domainModalFooter = document.getElementById('domain-modal-footer');
+      const domainModalClose = document.getElementById('domain-modal-close');
+      const domainModalCancel = document.getElementById('domain-modal-cancel');
+      const domainModalConfirm = document.getElementById('domain-modal-confirm');
+
+      let pendingDomain = null;
+
+      const openDomainModal = () => {
+        domainModalBackdrop.classList.remove('hidden');
+        domainModalBody.innerHTML =
+          '<div class="modal-loading"><span class="loading-spinner"></span>AI가 도메인을 분석하는 중입니다…</div>';
+        domainModalFooter.style.display = 'none';
+      };
+
+      const closeDomainModal = () => {
+        domainModalBackdrop.classList.add('hidden');
+        pendingDomain = null;
+      };
+
+      const confidenceLabel = (score) => {
+        if (score >= 0.75) return { text: '높음', cls: 'high' };
+        if (score >= 0.45) return { text: '보통', cls: 'medium' };
+        return { text: '낮음', cls: 'low' };
+      };
+
+      const renderDomainModalContent = (preview) => {
+        const conf = confidenceLabel(preview.confidence);
+        const domainOptions = preview.availableDomains
+          .map(d =>
+            '<option value="' + escapeHtml(d) + '"' +
+            (d === preview.domain ? ' selected' : '') +
+            '>' + escapeHtml(d) + '</option>'
+          )
+          .join('');
+
+        domainModalBody.innerHTML =
+          '<div class="modal-field">' +
+            '<span class="modal-label">AI 요약</span>' +
+            '<div class="modal-summary-text">' + escapeHtml(preview.summary) + '</div>' +
+          '</div>' +
+          '<div class="modal-field">' +
+            '<span class="modal-label">' +
+              '도메인' +
+              '<span class="modal-confidence-badge modal-confidence-badge--' + conf.cls + '">신뢰도 ' + conf.text + '</span>' +
+            '</span>' +
+            '<div class="modal-domain-row">' +
+              '<select id="domain-modal-select" class="modal-domain-select">' +
+                domainOptions +
+                '<option value="__new__">+ 새 도메인 생성</option>' +
+              '</select>' +
+            '</div>' +
+            '<div id="domain-new-row" style="display:none; margin-top:6px" class="modal-field">' +
+              '<input id="domain-new-input" class="modal-new-domain-input" type="text" placeholder="새 도메인 이름 (영소문자, 하이픈만 사용)" />' +
+              '<span class="modal-new-domain-hint">예: tech-stack, operations, hr-policy</span>' +
+            '</div>' +
+          '</div>';
+
+        const select = document.getElementById('domain-modal-select');
+        const newRow = document.getElementById('domain-new-row');
+        const newInput = document.getElementById('domain-new-input');
+
+        pendingDomain = preview.domain;
+
+        select.addEventListener('change', () => {
+          if (select.value === '__new__') {
+            newRow.style.display = 'grid';
+            newInput.focus();
+            pendingDomain = null;
+          } else {
+            newRow.style.display = 'none';
+            pendingDomain = select.value;
+          }
+        });
+
+        newInput.addEventListener('input', () => {
+          pendingDomain = newInput.value.trim() || null;
+        });
+
+        domainModalFooter.style.display = 'flex';
+      };
+
+      domainModalClose.addEventListener('click', closeDomainModal);
+      domainModalCancel.addEventListener('click', closeDomainModal);
+      domainModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === domainModalBackdrop) closeDomainModal();
+      });
+
+      const performSave = async (domain) => {
         const isEditing = editingDocumentId !== null;
-        saveButton.textContent = isEditing ? '수정 중...' : '저장 중...';
+        const url = isEditing ? '/documents/' + encodeURIComponent(editingDocumentId) : '/documents';
+        const method = isEditing ? 'PUT' : 'POST';
 
-        try {
-          const url = isEditing ? '/documents/' + encodeURIComponent(editingDocumentId) : '/documents';
-          const method = isEditing ? 'PUT' : 'POST';
-          const response = await fetch(url, {
-            method,
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              title: titleInput.value,
-              content: easyMDE.value(),
-            }),
-          });
+        const body = { title: titleInput.value, content: easyMDE.value() };
+        if (domain) body.domain = domain;
 
-          const payload = await response.json();
+        const response = await fetch(url, {
+          method,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
-          if (!response.ok) {
-            const message = payload.message || (isEditing ? '수정에 실패했습니다.' : '저장에 실패했습니다.');
-            showToast(message, 'error');
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.message || (isEditing ? '수정에 실패했습니다.' : '저장에 실패했습니다.'));
+        }
+
+        return payload;
+      };
+
+      domainModalConfirm.addEventListener('click', async () => {
+        const select = document.getElementById('domain-modal-select');
+        const newInput = document.getElementById('domain-new-input');
+        let chosenDomain = pendingDomain;
+
+        if (select && select.value === '__new__') {
+          chosenDomain = newInput ? newInput.value.trim() : null;
+          if (!chosenDomain) {
+            showToast('새 도메인 이름을 입력하세요.', 'error');
             return;
           }
+        }
 
-          if (isEditing) {
-            showToast('문서가 수정되었습니다.', 'success');
-          } else {
-            showToast('문서가 저장되었습니다.', 'success');
-          }
+        domainModalConfirm.disabled = true;
+        domainModalConfirm.textContent = '저장 중...';
 
+        try {
+          await performSave(chosenDomain);
+          closeDomainModal();
+          showToast(editingDocumentId !== null ? '문서가 수정되었습니다.' : '문서가 저장되었습니다.', 'success');
           await initialLoad();
-
           exitEditMode();
           titleInput.value = '';
           easyMDE.value('');
-
-          if (isEditing) {
-            switchToTab('browse');
-          }
+          if (editingDocumentId !== null) switchToTab('browse');
         } catch (error) {
-          const message = '네트워크 오류가 발생했습니다.';
-          showToast(message, 'error');
+          showToast(error.message || '저장에 실패했습니다.', 'error');
+        } finally {
+          domainModalConfirm.disabled = false;
+          domainModalConfirm.textContent = '이대로 저장';
+        }
+      });
+
+      // Form submission — new doc goes through preview modal; edit mode saves directly
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const isEditing = editingDocumentId !== null;
+
+        if (isEditing) {
+          saveButton.disabled = true;
+          saveButton.textContent = '수정 중...';
+          try {
+            await performSave(null);
+            showToast('문서가 수정되었습니다.', 'success');
+            await initialLoad();
+            exitEditMode();
+            titleInput.value = '';
+            easyMDE.value('');
+            switchToTab('browse');
+          } catch (error) {
+            showToast(error.message || '수정에 실패했습니다.', 'error');
+          } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = '수정';
+          }
+          return;
+        }
+
+        // New document: show domain preview modal
+        saveButton.disabled = true;
+        saveButton.textContent = '분석 중...';
+        openDomainModal();
+
+        try {
+          const response = await fetch('/documents/preview', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ title: titleInput.value, content: easyMDE.value() }),
+          });
+
+          if (!response.ok) {
+            closeDomainModal();
+            const payload = await response.json().catch(() => ({}));
+            showToast(payload.message || '분석에 실패했습니다.', 'error');
+            return;
+          }
+
+          const preview = await response.json();
+          renderDomainModalContent(preview);
+        } catch {
+          closeDomainModal();
+          showToast('네트워크 오류가 발생했습니다.', 'error');
         } finally {
           saveButton.disabled = false;
-          saveButton.textContent = editingDocumentId !== null ? '수정' : '저장하기';
+          saveButton.textContent = '저장하기';
         }
       });
 

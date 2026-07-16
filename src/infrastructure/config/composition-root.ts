@@ -23,6 +23,7 @@ import { SearchDocumentsUseCase } from '../../application/use-cases/search-docum
 import { SuggestLinksUseCase } from '../../application/use-cases/suggest-links.js';
 import { UpdateDocumentUseCase } from '../../application/use-cases/update-document.js';
 import { DeleteDocumentUseCase } from '../../application/use-cases/delete-document.js';
+import { PreviewDocumentUseCase } from '../../application/use-cases/preview-document.js';
 import { ValidateLinksUseCase } from '../../application/use-cases/validate-links.js';
 import { ListConflictsUseCase } from '../../application/use-cases/list-conflicts.js';
 import { OpenRouterSemanticDomainNormalizer } from '../../application/services/openrouter-semantic-domain-normalizer.js';
@@ -34,6 +35,7 @@ import { createSearchDocumentsRouter } from '../http/routes/search-documents.js'
 import { createUpdateDocumentRouter } from '../http/routes/update-document.js';
 import { createDeleteDocumentRouter } from '../http/routes/delete-document.js';
 import { createListConflictsRouter } from '../http/routes/list-conflicts.js';
+import { createPreviewDocumentRouter } from '../http/routes/preview-document.js';
 import { renderHomePage } from '../http/views/home.js';
 import { OpenRouterDocumentSummaryGenerator } from '../llm/openrouter-document-summary-generator.js';
 import { OpenRouterDomainClassifier } from '../llm/openrouter-domain-classifier.js';
@@ -146,6 +148,11 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
   );
   const deleteDocumentUseCase = new DeleteDocumentUseCase(documentRepository, indexCatalog);
   const listConflictsUseCase = new ListConflictsUseCase(documentRepository);
+  const previewDocumentUseCase = new PreviewDocumentUseCase(
+    documentRepository,
+    documentSummaryGenerator,
+    domainNormalizer,
+  );
   const askAIUseCase = questionAnswerer 
     ? new AskAIUseCase(documentRepository, questionAnswerer, embeddingGenerator, indexSearcher)
     : null;
@@ -180,6 +187,13 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     }),
   );
   app.route('/documents', createDeleteDocumentRouter({ deleteDocumentUseCase }));
+  app.route(
+    '/documents',
+    createPreviewDocumentRouter({
+      previewDocumentUseCase,
+      maxRequestBytes: options.maxRequestBytes ?? 64 * 1024,
+    }),
+  );
   app.route('/index', createIndexRouter({ listIndexUseCase }));
   app.route('/conflicts', createListConflictsRouter({ listConflictsUseCase }));
   app.route(
