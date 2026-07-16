@@ -42,6 +42,22 @@ const buildDocument = (params: { title: string; content?: string; tags?: string[
     metadata: DocumentMetadata.from({ tags: params.tags ?? [] }),
   });
 
+const buildDocumentWithConflicts = (params: {
+  title: string;
+  content?: string;
+  semanticConflicts: Array<{
+    conflictingDocumentSlug: string;
+    conflictingDocumentTitle: string;
+    explanation: string;
+    confidence: 'high' | 'medium' | 'low';
+  }>;
+}): WikiDocument =>
+  WikiDocument.create({
+    title: Title.create(params.title),
+    content: params.content ?? '',
+    metadata: DocumentMetadata.from({ semanticConflicts: params.semanticConflicts }),
+  });
+
 const stubAnswerer = (answer: string | Error): QuestionAnswerer => ({
   answer: vi.fn(() =>
     answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer),
@@ -82,6 +98,7 @@ describe('AskAIUseCase', () => {
 
       expect(result.answer).toBe('타입스크립트는 정적 타입 언어입니다.');
       expect(result.sources).toEqual([{ id: 'typescript-guide', title: 'TypeScript Guide' }]);
+      expect(result.conflicts).toEqual([]);
     });
 
     it('ranks documents by keyword frequency and selects the top 3', async () => {
@@ -202,6 +219,7 @@ describe('AskAIUseCase', () => {
 
       expect(result.answer).toBe('문서에서 찾을 수 없습니다');
       expect(result.sources).toEqual([]);
+      expect(result.conflicts).toEqual([]);
     });
 
     it('still calls the answerer with empty context when no documents match', async () => {
@@ -223,6 +241,75 @@ describe('AskAIUseCase', () => {
       const useCase = new AskAIUseCase(repository, answerer);
 
       await expect(useCase.execute({ question: 'react' })).rejects.toThrow('LLM down');
+    });
+
+    it('returns a conflict warning template when matched documents conflict with each other', async () => {
+      const repository = new FakeDocumentRepository();
+      await repository.save(
+        buildDocumentWithConflicts({
+          title: '배송 정책 A',
+          content: '배송비용은 3000원입니다. 국내 배송만 지원합니다.',
+          semanticConflicts: [
+            {
+              conflictingDocumentSlug: '배송-정책-b',
+              conflictingDocumentTitle: '배송 정책 B',
+              explanation: '배송비와 지원 지역 정책이 상충됩니다.',
+              confidence: 'high',
+            },
+          ],
+        }),
+      );
+      await repository.save(
+        buildDocumentWithConflicts({
+          title: '배송 정책 B',
+          content: '배송비용은 무료이며 해외 배송을 지원합니다.',
+          semanticConflicts: [],
+        }),
+      );
+      const answerer = stubAnswerer('일반 답변이 오면 안 됩니다.');
+      const useCase = new AskAIUseCase(repository, answerer);
+
+      const result = await useCase.execute({ question: '배송비용은 얼마인가요?' });
+
+      expect(result.answer).toContain('충돌된 문서에 대한 지식입니다');
+      expect(result.conflicts).toEqual([
+        {
+          left: { id: '배송-정책-a', title: '배송 정책 A' },
+          right: { id: '배송-정책-b', title: '배송 정책 B' },
+          explanation: '배송비와 지원 지역 정책이 상충됩니다.',
+          confidence: 'high',
+        },
+      ]);
+      expect(answerer.answer).not.toHaveBeenCalled();
+    });
+
+    it('does not emit conflict metadata when only one side of a conflict is in the matched set', async () => {
+      const repository = new FakeDocumentRepository();
+      await repository.save(
+        buildDocumentWithConflicts({
+          title: '배송 정책 A',
+          content: '배송비용은 3000원입니다.',
+          semanticConflicts: [
+            {
+              conflictingDocumentSlug: '배송-정책-b',
+              conflictingDocumentTitle: '배송 정책 B',
+              explanation: '배송비 정책이 상충됩니다.',
+              confidence: 'high',
+            },
+          ],
+        }),
+      );
+      await repository.save(
+        buildDocument({ title: '결제 정책', content: '결제 수단은 카드입니다.' }),
+      );
+      const answerer = stubAnswerer('답변');
+      const useCase = new AskAIUseCase(repository, answerer);
+
+      const result = await useCase.execute({ question: '배송비용' });
+
+      expect(result.conflicts).toEqual([]);
+      expect(result.answer).toBe('답변');
+      expect(answerer.answer).toHaveBeenCalledTimes(1);
     });
 
     it('trims the question before searching and forwarding to the answerer', async () => {

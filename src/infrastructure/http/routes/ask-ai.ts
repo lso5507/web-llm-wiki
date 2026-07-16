@@ -63,7 +63,10 @@ export const createAskAIRouter = ({
 
     try {
       const result = await askAIUseCase.execute({ question });
-      return context.json({ answer: result.answer, sources: result.sources }, 200);
+      return context.json(
+        { answer: result.answer, sources: result.sources, conflicts: result.conflicts },
+        200,
+      );
     } catch (error) {
       if (error instanceof EmptyQuestionError) {
         return context.json({ message: error.message }, 400);

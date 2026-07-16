@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { QuestionAnswerer } from '../../../src/application/ports/question-answerer.js';
+import { Domain } from '../../../src/domain/wiki/domain.js';
 import { createApp } from '../../../src/infrastructure/config/composition-root.js';
 
 const stubAnswerer = (answer: string | Error): QuestionAnswerer => ({
@@ -46,9 +47,14 @@ describe('POST /ask', () => {
       });
 
       expect(response.status).toBe(200);
-      const body = (await response.json()) as { answer: string; sources: Array<{ id: string; title: string }> };
+      const body = (await response.json()) as {
+        answer: string;
+        sources: Array<{ id: string; title: string }>;
+        conflicts: unknown[];
+      };
       expect(body.answer).toBe('TypeScript는 정적 타입 언어입니다.');
       expect(body.sources).toEqual([{ id: 'typescript-guide', title: 'TypeScript Guide' }]);
+      expect(body.conflicts).toEqual([]);
     });
 
     it('returns up to 3 sources sorted by keyword relevance', async () => {
@@ -69,8 +75,13 @@ describe('POST /ask', () => {
       });
 
       expect(response.status).toBe(200);
-      const body = (await response.json()) as { answer: string; sources: Array<{ id: string; title: string }> };
+      const body = (await response.json()) as {
+        answer: string;
+        sources: Array<{ id: string; title: string }>;
+        conflicts: unknown[];
+      };
       expect(body.sources).toHaveLength(3);
+      expect(body.conflicts).toEqual([]);
       expect(body.sources[0]).toEqual({ id: 'react-hooks', title: 'React Hooks' });
       const ids = body.sources.map((source) => source.id);
       expect(ids).not.toContain('vue-guide');
@@ -91,9 +102,89 @@ describe('POST /ask', () => {
       });
 
       expect(response.status).toBe(200);
-      const body = (await response.json()) as { answer: string; sources: unknown[] };
+      const body = (await response.json()) as { answer: string; sources: unknown[]; conflicts: unknown[] };
       expect(body.answer).toBe('문서에서 찾을 수 없습니다.');
       expect(body.sources).toEqual([]);
+      expect(body.conflicts).toEqual([]);
+    });
+
+    it('returns conflict metadata and a warning answer when matched sources conflict', async () => {
+      const app = createApp({
+        openRouter: {
+          questionAnswerer: stubAnswerer('이 답변은 호출되면 안 됩니다.'),
+          domainClassifier: {
+            async classify() {
+              return Domain.from('shipping');
+            },
+          },
+          semanticConflictDetector: {
+            async detectConflicts(targetDocument) {
+              if (targetDocument.title.value !== '배송 정책 A') {
+                return [];
+              }
+
+              return [
+                {
+                  conflictingDocumentSlug: '배송-정책-b',
+                  conflictingDocumentTitle: '배송 정책 B',
+                  explanation: '배송비와 배송 범위 정책이 상충됩니다.',
+                  confidence: 'high',
+                },
+              ];
+            },
+          },
+        },
+      });
+
+      const firstResponse = await app.request('/documents', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: '배송 정책 A',
+          summary: '배송비 3000원, 국내 배송만 지원',
+          content: '배송비용은 3000원입니다. 국내 배송만 지원합니다.',
+          forceSemanticConflicts: false,
+        }),
+      });
+      expect(firstResponse.status).toBe(201);
+
+      const secondResponse = await app.request('/documents', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: '배송 정책 B',
+          summary: '배송비 무료, 해외 배송 지원',
+          content: '배송비용은 무료이며 해외 배송을 지원합니다.',
+        }),
+      });
+      expect(secondResponse.status).toBe(201);
+
+      const response = await app.request('/ask', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ question: '배송비용은 얼마인가요?' }),
+      });
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        answer: string;
+        sources: Array<{ id: string; title: string }>;
+        conflicts: Array<{
+          left: { id: string; title: string };
+          right: { id: string; title: string };
+          explanation: string;
+          confidence: string;
+        }>;
+      };
+      expect(body.answer).toContain('충돌된 문서에 대한 지식입니다');
+      expect(body.conflicts).toEqual([
+        {
+          left: { id: '배송-정책-a', title: '배송 정책 A' },
+          right: { id: '배송-정책-b', title: '배송 정책 B' },
+          explanation: '배송비와 배송 범위 정책이 상충됩니다.',
+          confidence: 'high',
+        },
+      ]);
     });
   });
 

@@ -743,6 +743,35 @@ export const renderHomePage = (): string => {
         padding: 48px 24px;
       }
 
+      .detail-panel--compare {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-height: none;
+      }
+
+      .detail-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .detail-back-button {
+        border: 1px solid var(--line);
+        background: white;
+        color: var(--muted);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .detail-back-button:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
       .detail-title {
         font-size: 22px;
         font-weight: 700;
@@ -874,6 +903,29 @@ export const renderHomePage = (): string => {
         text-decoration: underline;
       }
 
+      .semantic-conflict-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .semantic-conflict-compare {
+        border: 1px solid #f59e0b;
+        background: #fff7ed;
+        color: #9a3412;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .semantic-conflict-compare:hover {
+        background: #fed7aa;
+      }
+
       .semantic-conflict-confidence {
         display: inline-flex;
         padding: 2px 6px;
@@ -886,6 +938,239 @@ export const renderHomePage = (): string => {
       .semantic-conflict-confidence--high { background: #dc2626; color: white; }
       .semantic-conflict-confidence--medium { background: #f59e0b; color: #422006; }
       .semantic-conflict-confidence--low { background: #64748b; color: white; }
+
+      .compare-summary {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border: 1px solid #fde68a;
+        background: #fffbeb;
+        border-radius: 8px;
+      }
+
+      .compare-summary-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #92400e;
+      }
+
+      .compare-summary-text {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .compare-source-card {
+        display: grid;
+        gap: 8px;
+        padding: 12px 14px;
+        border: 1px solid #fde68a;
+        border-radius: 8px;
+        background: white;
+      }
+
+      .compare-source-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .compare-doc-link {
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-weight: 700;
+        text-align: left;
+        padding: 0;
+        cursor: pointer;
+      }
+
+      .compare-doc-link:hover {
+        text-decoration: underline;
+      }
+
+      .compare-doc-link--source {
+        font-size: 18px;
+        color: var(--text);
+      }
+
+      .compare-doc-link--target {
+        font-size: 16px;
+        color: #92400e;
+      }
+
+      .compare-summary-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .compare-summary-doc-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .compare-summary-doc-item {
+        display: grid;
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+      }
+
+      .compare-summary-doc-role {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .compare-doc-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .compare-doc-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        border: 1px solid var(--line);
+        color: var(--text);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .compare-diff {
+        display: grid;
+        gap: 8px;
+      }
+
+      .compare-sections {
+        display: grid;
+        gap: 16px;
+      }
+
+      .compare-section {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: white;
+      }
+
+      .compare-section--focus {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.14);
+      }
+
+      .compare-section-header {
+        display: grid;
+        gap: 8px;
+      }
+
+      .compare-section-index {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .compare-section-docs {
+        display: grid;
+        gap: 6px;
+      }
+
+      .compare-section-caption {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .compare-section-explanation {
+        font-size: 13px;
+        color: #92400e;
+        line-height: 1.6;
+      }
+
+      .compare-hunk {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .compare-hunk-header {
+        padding: 8px 12px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--line);
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .compare-line {
+        display: grid;
+        gap: 6px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+        padding: 10px 12px;
+      }
+
+      .compare-line:last-child {
+        border-bottom: 0;
+      }
+
+      .compare-line--same { background: white; }
+      .compare-line--remove { background: #ffeef0; }
+      .compare-line--add { background: #e6ffed; }
+
+      .compare-line-meta {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .compare-line-marker {
+        display: inline-flex;
+        width: 22px;
+        height: 22px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-weight: 700;
+        background: rgba(15, 23, 42, 0.08);
+      }
+
+      .compare-line-content {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .compare-empty {
+        padding: 18px;
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        background: white;
+      }
 
       /* Markdown body */
       .detail-markdown {
@@ -1101,6 +1386,10 @@ export const renderHomePage = (): string => {
         border-top: 1px solid var(--line);
         background: var(--panel);
         flex-shrink: 0;
+      }
+
+      .detail-actions[hidden] {
+        display: none !important;
       }
 
       .detail-button {
@@ -1523,6 +1812,44 @@ export const renderHomePage = (): string => {
         gap: 6px;
       }
 
+      .ask-conflict-warning {
+        display: grid;
+        gap: 10px;
+        padding: 14px 16px;
+        border: 1px solid #fcd34d;
+        border-left: 4px solid #f59e0b;
+        border-radius: 8px;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .ask-conflict-warning-title {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .ask-conflict-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .ask-conflict-button {
+        border: 1px solid #f59e0b;
+        background: white;
+        color: #92400e;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .ask-conflict-button:hover {
+        background: #fed7aa;
+      }
+
       .ask-source-chip {
         display: inline-flex;
         align-items: center;
@@ -1751,7 +2078,10 @@ export const renderHomePage = (): string => {
           <aside id="detail-panel" class="detail-panel" aria-hidden="true">
             <header class="detail-header">
               <span class="detail-header-label">문서 상세</span>
-              <button id="detail-close" type="button" class="detail-close" aria-label="닫기">×</button>
+              <div class="detail-header-actions">
+                <button id="detail-back-button" type="button" class="detail-back-button" hidden>문서로 돌아가기</button>
+                <button id="detail-close" type="button" class="detail-close" aria-label="닫기">×</button>
+              </div>
             </header>
             <div id="detail-body" class="detail-body">
               <div class="detail-body--empty">목록에서 문서를 선택하세요</div>
@@ -1870,7 +2200,7 @@ export const renderHomePage = (): string => {
           const confidenceColor = conflict.confidence === 'high' ? '#ef4444' : 
                                   conflict.confidence === 'medium' ? '#f59e0b' : '#64748b';
           return \`
-            <div class="notification-item" data-document-id="\${conflict.documentId}">
+            <div class="notification-item" data-document-id="\${conflict.documentId}" data-conflicting-document-id="\${conflict.conflictingDocumentId}" data-compare-explanation="\${escapeHtml(conflict.explanation || '')}" data-compare-confidence="\${escapeHtml(conflict.confidence || 'low')}">
               <div class="notification-item-title">\${escapeHtml(conflict.documentTitle)}</div>
               <div class="notification-item-meta">
                 <span class="notification-item-conflict">충돌: \${escapeHtml(conflict.conflictingDocumentTitle)}</span>
@@ -1884,12 +2214,15 @@ export const renderHomePage = (): string => {
         notificationList.querySelectorAll('.notification-item').forEach(item => {
           item.addEventListener('click', () => {
             const documentId = item.dataset.documentId;
+            const conflictingDocumentId = item.dataset.conflictingDocumentId;
             notificationDropdown.classList.remove('active');
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            tabButtons[1].classList.add('active');
-            document.getElementById('browse-tab').classList.add('active');
-            loadAndDisplayDocument(documentId);
+            switchToTab('browse');
+            openCompareView(
+              documentId,
+              conflictingDocumentId,
+              item.dataset.compareExplanation || '',
+              item.dataset.compareConfidence || 'low',
+            );
           });
         });
       };
@@ -2338,11 +2671,14 @@ export const renderHomePage = (): string => {
       const detailBackdrop = document.getElementById('detail-backdrop');
       const detailBody = document.getElementById('detail-body');
       const detailActions = document.getElementById('detail-actions');
+      const detailHeaderLabel = document.querySelector('.detail-header-label');
+      const detailBackButton = document.getElementById('detail-back-button');
       const detailCloseButton = document.getElementById('detail-close');
       const detailEditButton = document.getElementById('detail-edit-button');
       const detailDeleteButton = document.getElementById('detail-delete-button');
 
       let currentDetailDocument = null;
+      let currentCompareSourceId = null;
 
       const openDetailPanel = () => {
         detailPanel.classList.add('open');
@@ -2352,15 +2688,22 @@ export const renderHomePage = (): string => {
       };
 
       const renderDetailEmpty = () => {
+        detailPanel.classList.remove('detail-panel--compare');
+        detailHeaderLabel.textContent = '문서 상세';
+        detailBackButton.hidden = true;
         detailBody.innerHTML = '<div class="detail-body--empty">목록에서 문서를 선택하세요</div>';
       };
 
       const closeDetailPanel = () => {
         detailPanel.classList.remove('open');
+        detailPanel.classList.remove('detail-panel--compare');
         detailBackdrop.classList.remove('open');
         detailPanel.setAttribute('aria-hidden', 'true');
         currentDetailDocument = null;
+        currentCompareSourceId = null;
         detailActions.hidden = true;
+        detailHeaderLabel.textContent = '문서 상세';
+        detailBackButton.hidden = true;
         renderDetailEmpty();
         setTimeout(() => {
           if (!detailPanel.classList.contains('open')) {
@@ -2422,14 +2765,17 @@ export const renderHomePage = (): string => {
                               '<button type="button" class="semantic-conflict-link" data-detail-link="' + escapeHtml(slug) + '">' +
                                 escapeHtml(title) +
                               '</button>' +
-                              '<span class="semantic-conflict-confidence semantic-conflict-confidence--' + escapeHtml(confidence) + '">' +
+                             '<span class="semantic-conflict-confidence semantic-conflict-confidence--' + escapeHtml(confidence) + '">' +
                                 escapeHtml(confidence) +
                               '</span>' +
-                            '</div>' +
+                             '</div>' +
                             '<div>' + escapeHtml(conflict.explanation || '') + '</div>' +
+                            '<div class="semantic-conflict-actions">' +
+                              '<button type="button" class="semantic-conflict-compare" data-compare-link="' + escapeHtml(doc.id) + '|' + escapeHtml(slug) + '" data-compare-explanation="' + escapeHtml(conflict.explanation || '') + '" data-compare-confidence="' + escapeHtml(confidence) + '">[explore] [충돌된 내용 확인]</button>' +
+                            '</div>' +
                           '</div>';
-                 }).join('') +
-               '</div>';
+                  }).join('') +
+                '</div>';
       };
 
       const renderMarkdownContent = (content, brokenLinks) => {
@@ -2504,6 +2850,10 @@ export const renderHomePage = (): string => {
       };
 
       const renderDetail = (doc) => {
+        detailPanel.classList.remove('detail-panel--compare');
+        detailHeaderLabel.textContent = '문서 상세';
+        detailBackButton.hidden = true;
+        currentCompareSourceId = null;
         const tags = Array.isArray(doc.tags) ? doc.tags : [];
         const status = doc.status || 'draft';
         const badges = [];
@@ -2530,6 +2880,9 @@ export const renderHomePage = (): string => {
       };
 
       const showDetailLoading = () => {
+        detailPanel.classList.remove('detail-panel--compare');
+        detailHeaderLabel.textContent = '문서 상세';
+        detailBackButton.hidden = true;
         detailBody.innerHTML = '<div class="detail-loading"><span class="loading-spinner"></span>불러오는 중…</div>';
         detailActions.hidden = true;
       };
@@ -2566,6 +2919,290 @@ export const renderHomePage = (): string => {
         }
       };
 
+      const buildDiffRows = (leftText, rightText) => {
+        const lineBreak = String.fromCharCode(10);
+        const leftLines = String(leftText || '').split(lineBreak);
+        const rightLines = String(rightText || '').split(lineBreak);
+        const size = leftLines.length * rightLines.length;
+
+        if (size > 160000) {
+          const rows = [];
+          const maxLength = Math.max(leftLines.length, rightLines.length);
+          for (let index = 0; index < maxLength; index += 1) {
+            const leftLine = leftLines[index];
+            const rightLine = rightLines[index];
+            if (leftLine === rightLine) {
+              rows.push({ type: 'same', leftNumber: index + 1, rightNumber: index + 1, content: leftLine || '' });
+              continue;
+            }
+            if (leftLine !== undefined) {
+              rows.push({ type: 'remove', leftNumber: index + 1, rightNumber: '', content: leftLine });
+            }
+            if (rightLine !== undefined) {
+              rows.push({ type: 'add', leftNumber: '', rightNumber: index + 1, content: rightLine });
+            }
+          }
+          return rows;
+        }
+
+        const leftLength = leftLines.length;
+        const rightLength = rightLines.length;
+        const dp = Array.from({ length: leftLength + 1 }, () => Array(rightLength + 1).fill(0));
+
+        for (let i = leftLength - 1; i >= 0; i -= 1) {
+          for (let j = rightLength - 1; j >= 0; j -= 1) {
+            dp[i][j] = leftLines[i] === rightLines[j]
+              ? dp[i + 1][j + 1] + 1
+              : Math.max(dp[i + 1][j], dp[i][j + 1]);
+          }
+        }
+
+        const rows = [];
+        let i = 0;
+        let j = 0;
+
+        while (i < leftLength && j < rightLength) {
+          if (leftLines[i] === rightLines[j]) {
+            rows.push({ type: 'same', leftNumber: i + 1, rightNumber: j + 1, content: leftLines[i] });
+            i += 1;
+            j += 1;
+            continue;
+          }
+          if (dp[i + 1][j] >= dp[i][j + 1]) {
+            rows.push({ type: 'remove', leftNumber: i + 1, rightNumber: '', content: leftLines[i] });
+            i += 1;
+            continue;
+          }
+          rows.push({ type: 'add', leftNumber: '', rightNumber: j + 1, content: rightLines[j] });
+          j += 1;
+        }
+
+        while (i < leftLength) {
+          rows.push({ type: 'remove', leftNumber: i + 1, rightNumber: '', content: leftLines[i] });
+          i += 1;
+        }
+
+        while (j < rightLength) {
+          rows.push({ type: 'add', leftNumber: '', rightNumber: j + 1, content: rightLines[j] });
+          j += 1;
+        }
+
+        return rows;
+      };
+
+      const renderCompareRows = (rows, sourceTitle, conflictTitle) => {
+        if (!rows.length) {
+          return '<div class="compare-empty">비교할 내용이 없습니다.</div>';
+        }
+
+        const chunks = [];
+        let pending = [];
+        let hunkStart = null;
+        let hunkEnd = null;
+
+        const flush = () => {
+          if (!pending.length) return;
+          const header = '@@ -' + (hunkStart.left || 0) + ' +' + (hunkStart.right || 0) + ' @@';
+          chunks.push(
+            '<div class="compare-hunk">' +
+              '<div class="compare-hunk-header">' + header + '</div>' +
+              pending.map((row) => {
+                const marker = row.type === 'add' ? '+' : row.type === 'remove' ? '-' : ' ';
+                const lineOwner = row.type === 'add' ? conflictTitle : sourceTitle;
+                const lineNumber = row.type === 'add'
+                  ? row.rightNumber
+                  : row.leftNumber;
+                const lineRole = row.type === 'add' ? '비교 문서' : row.type === 'remove' ? '기준 문서' : '공통 문맥';
+                return '<div class="compare-line compare-line--' + row.type + '">' +
+                  '<div class="compare-line-meta">' +
+                    escapeHtml(lineRole) +
+                    (lineOwner ? ' · ' + escapeHtml(lineOwner) : '') +
+                    (lineNumber ? ' · ' + escapeHtml(String(lineNumber)) + '행' : '') +
+                  '</div>' +
+                  '<div class="compare-line-marker">' + escapeHtml(marker) + '</div>' +
+                  '<div class="compare-line-content">' + escapeHtml(row.content || '') + '</div>' +
+                '</div>';
+              }).join('') +
+            '</div>'
+          );
+          pending = [];
+          hunkStart = null;
+          hunkEnd = null;
+        };
+
+        rows.forEach((row) => {
+          if (row.type !== 'same') {
+            if (!hunkStart) {
+              hunkStart = { left: row.leftNumber || hunkEnd?.left || 0, right: row.rightNumber || hunkEnd?.right || 0 };
+            }
+            pending.push(row);
+            hunkEnd = { left: row.leftNumber || hunkEnd?.left || 0, right: row.rightNumber || hunkEnd?.right || 0 };
+            return;
+          }
+
+          if (!pending.length) {
+            return;
+          }
+
+          pending.push(row);
+          if (pending.length >= 8) {
+            flush();
+          }
+        });
+
+        flush();
+
+        return chunks.length
+          ? '<div class="compare-diff">' + chunks.join('') + '</div>'
+          : '<div class="compare-empty">두 문서의 차이가 없습니다.</div>';
+      };
+
+      const renderCompareSection = (sourceDoc, conflictDoc, explanation, confidence, index, focused) => {
+        const rows = buildDiffRows(sourceDoc.content, conflictDoc.content);
+        return '<section class="compare-section' + (focused ? ' compare-section--focus' : '') + '">' +
+          '<div class="compare-section-header">' +
+            '<div class="compare-section-index">충돌 문서 ' + escapeHtml(String(index + 1)) + '</div>' +
+            '<div class="compare-section-docs">' +
+              '<div class="compare-section-caption">기준 문서</div>' +
+              '<button type="button" class="compare-doc-link compare-doc-link--source" data-detail-link="' + escapeHtml(sourceDoc.id) + '">' + escapeHtml(sourceDoc.title) + '</button>' +
+              '<div class="compare-section-caption">비교 문서</div>' +
+              '<button type="button" class="compare-doc-link compare-doc-link--target" data-detail-link="' + escapeHtml(conflictDoc.id) + '">' + escapeHtml(conflictDoc.title) + '</button>' +
+            '</div>' +
+            '<div class="compare-summary-meta">' +
+              '<span class="semantic-conflict-confidence semantic-conflict-confidence--' + escapeHtml(confidence || 'low') + '">' + escapeHtml(confidence || 'low') + '</span>' +
+              '<span class="compare-section-explanation">' + escapeHtml(explanation || '충돌 내용을 확인해주세요.') + '</span>' +
+            '</div>' +
+          '</div>' +
+          renderCompareRows(rows, sourceDoc.title, conflictDoc.title) +
+        '</section>';
+      };
+
+      const renderCompareView = (sourceDoc, conflictEntries, focusedConflictId) => {
+        detailPanel.classList.add('detail-panel--compare');
+        detailHeaderLabel.textContent = '충돌 비교';
+        detailBackButton.hidden = false;
+        detailActions.hidden = true;
+        const sections = conflictEntries.length === 0
+          ? '<div class="compare-empty">표시할 충돌 문서가 없습니다.</div>'
+          : '<div class="compare-sections">' + conflictEntries.map((entry, index) => {
+              return renderCompareSection(
+                sourceDoc,
+                entry.document,
+                entry.explanation,
+                entry.confidence,
+                index,
+                entry.document.id === focusedConflictId,
+              );
+            }).join('') + '</div>';
+        detailBody.innerHTML =
+          '<div class="compare-summary">' +
+            '<div class="compare-summary-title">충돌 문서 탐색</div>' +
+            '<div class="compare-summary-text">충돌된 문서는 여러 개일 수 있습니다. 아래에서 각 충돌 문서를 세로로 비교하고, 문서명을 눌러 원본 문서로 이동할 수 있습니다.</div>' +
+            '<div class="compare-source-card">' +
+              '<div class="compare-source-label">기준 문서</div>' +
+              '<button type="button" class="compare-doc-link compare-doc-link--source" data-detail-link="' + escapeHtml(sourceDoc.id) + '">' + escapeHtml(sourceDoc.title) + '</button>' +
+              '<div class="compare-summary-meta">' +
+                '<span>충돌 문서 수: ' + escapeHtml(String(conflictEntries.length)) + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="compare-summary-doc-list">' +
+              conflictEntries.map((entry, index) => {
+                return '<div class="compare-summary-doc-item">' +
+                  '<div class="compare-summary-doc-role">충돌 문서 ' + escapeHtml(String(index + 1)) + '</div>' +
+                  '<button type="button" class="compare-doc-link compare-doc-link--target" data-detail-link="' + escapeHtml(entry.document.id) + '">' + escapeHtml(entry.document.title) + '</button>' +
+                  '<div class="compare-summary-meta">' +
+                    '<span class="semantic-conflict-confidence semantic-conflict-confidence--' + escapeHtml(entry.confidence || 'low') + '">' + escapeHtml(entry.confidence || 'low') + '</span>' +
+                    '<span>' + escapeHtml(entry.explanation || '') + '</span>' +
+                  '</div>' +
+                '</div>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+          sections;
+      };
+
+      const openCompareView = async (sourceId, focusedConflictId, explanation, confidence) => {
+        if (!sourceId) {
+          return;
+        }
+
+        openDetailPanel();
+        showDetailLoading();
+        try {
+          const sourceResponse = await fetch('/documents/' + encodeURIComponent(sourceId));
+          if (!sourceResponse.ok) {
+            showDetailError('충돌 문서를 불러오는 데 실패했습니다.');
+            return;
+          }
+          const sourceDoc = await sourceResponse.json();
+          const semanticConflicts = Array.isArray(sourceDoc.semanticConflicts)
+            ? sourceDoc.semanticConflicts.slice()
+            : [];
+
+          if (focusedConflictId && !semanticConflicts.some((item) => item.conflictingDocumentSlug === focusedConflictId)) {
+            semanticConflicts.unshift({
+              conflictingDocumentSlug: focusedConflictId,
+              conflictingDocumentTitle: focusedConflictId,
+              explanation: explanation || '충돌 내용을 확인해주세요.',
+              confidence: confidence || 'low',
+            });
+          }
+
+          const uniqueConflictSlugs = Array.from(new Set(
+            semanticConflicts
+              .map((item) => item.conflictingDocumentSlug)
+              .filter((value) => typeof value === 'string' && value.trim() !== ''),
+          ));
+
+          const conflictResponses = await Promise.all(
+            uniqueConflictSlugs.map((slug) => fetch('/documents/' + encodeURIComponent(slug))),
+          );
+
+          const conflictDocuments = await Promise.all(
+            conflictResponses.map(async (response) => {
+              if (!response.ok) {
+                return null;
+              }
+              return response.json();
+            }),
+          );
+
+          const conflictDocMap = new Map(
+            conflictDocuments
+              .filter(Boolean)
+              .map((document) => [document.id, document]),
+          );
+
+          const conflictEntries = semanticConflicts
+            .map((item) => {
+              const document = conflictDocMap.get(item.conflictingDocumentSlug);
+              if (!document) {
+                return null;
+              }
+              return {
+                document,
+                explanation: item.explanation,
+                confidence: item.confidence,
+              };
+            })
+            .filter(Boolean)
+            .sort((left, right) => {
+              if (focusedConflictId) {
+                if (left.document.id === focusedConflictId) return -1;
+                if (right.document.id === focusedConflictId) return 1;
+              }
+              return left.document.title.localeCompare(right.document.title, 'ko');
+            });
+
+          currentDetailDocument = sourceDoc;
+          currentCompareSourceId = sourceId;
+          renderCompareView(sourceDoc, conflictEntries, focusedConflictId);
+        } catch (error) {
+          console.error('Compare load failed:', error);
+          showDetailError('비교 화면을 여는 데 실패했습니다.');
+        }
+      };
+
       indexList.addEventListener('click', (event) => {
         const toggle = event.target.closest('.index-item-toggle');
         if (toggle && !toggle.classList.contains('index-item-toggle--leaf')) {
@@ -2582,6 +3219,18 @@ export const renderHomePage = (): string => {
       });
 
       detailBody.addEventListener('click', (event) => {
+        const compareEl = event.target.closest('[data-compare-link]');
+        if (compareEl) {
+          event.preventDefault();
+          const pair = String(compareEl.dataset.compareLink || '').split('|');
+          openCompareView(
+            pair[0],
+            pair[1],
+            compareEl.dataset.compareExplanation || '',
+            compareEl.dataset.compareConfidence || 'low',
+          );
+          return;
+        }
         const linkEl = event.target.closest('[data-detail-link]');
         if (!linkEl) return;
         if (linkEl.classList.contains('wiki-link--broken')) {
@@ -2595,6 +3244,10 @@ export const renderHomePage = (): string => {
       });
 
       detailCloseButton.addEventListener('click', closeDetailPanel);
+      detailBackButton.addEventListener('click', () => {
+        if (!currentCompareSourceId) return;
+        fetchAndShowDetail(currentCompareSourceId);
+      });
       detailBackdrop.addEventListener('click', closeDetailPanel);
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && detailPanel.classList.contains('open')) {
@@ -2716,20 +3369,46 @@ export const renderHomePage = (): string => {
         return '<div class="ask-answer-section">' +
                  '<span class="ask-section-label">출처</span>' +
                  '<div class="ask-sources-list">' + chips + '</div>' +
-               '</div>';
+                '</div>';
+      };
+
+      const renderAskConflictWarning = (conflicts) => {
+        const list = Array.isArray(conflicts) ? conflicts : [];
+        if (list.length === 0) return '';
+        return '<div class="ask-conflict-warning">' +
+          '<div class="ask-conflict-warning-title">충돌된 문서에 대한 지식입니다. 해당 문서 충돌을 우선적으로 해결하여주세요.</div>' +
+          '<div>정확한 답변이 아닐 수 있으므로 먼저 충돌된 내용을 확인해주세요.</div>' +
+          '<div class="ask-conflict-actions">' +
+            list.map((conflict) => {
+              const left = conflict && conflict.left ? conflict.left : null;
+              const right = conflict && conflict.right ? conflict.right : null;
+              if (!left || !right || !left.id || !right.id) return '';
+              return '<button type="button" class="ask-conflict-button" data-compare-link="' +
+                escapeHtml(String(left.id)) + '|' + escapeHtml(String(right.id)) +
+                '" data-compare-explanation="' + escapeHtml(String(conflict.explanation || '')) +
+                '" data-compare-confidence="' + escapeHtml(String(conflict.confidence || 'low')) + '">' +
+                '[explore] [충돌된 내용에대한 확인]' +
+              '</button>';
+            }).join('') +
+          '</div>' +
+        '</div>';
       };
 
       const renderAskAnswer = (question, payload) => {
+        const hasConflicts = Array.isArray(payload.conflicts) && payload.conflicts.length > 0;
         askResultArea.innerHTML =
           '<div class="ask-answer-card">' +
             '<div class="ask-question-echo">' +
               '<span class="ask-question-echo-label">질문</span>' +
               escapeHtml(question) +
             '</div>' +
-            '<div class="ask-answer-section">' +
-              '<span class="ask-section-label">답변</span>' +
-              renderAskAnswerMarkdown(payload.answer) +
-            '</div>' +
+            renderAskConflictWarning(payload.conflicts) +
+            (hasConflicts
+              ? ''
+              : '<div class="ask-answer-section">' +
+                  '<span class="ask-section-label">답변</span>' +
+                  renderAskAnswerMarkdown(payload.answer) +
+                '</div>') +
             renderAskSources(payload.sources) +
           '</div>';
       };
@@ -2792,6 +3471,18 @@ export const renderHomePage = (): string => {
       askSubmitButton.addEventListener('click', submitAskQuestion);
 
       askResultArea.addEventListener('click', (event) => {
+        const compareEl = event.target.closest('[data-compare-link]');
+        if (compareEl) {
+          const pair = String(compareEl.dataset.compareLink || '').split('|');
+          switchToTab('browse');
+          openCompareView(
+            pair[0],
+            pair[1],
+            compareEl.dataset.compareExplanation || '',
+            compareEl.dataset.compareConfidence || 'low',
+          );
+          return;
+        }
         const chip = event.target.closest('[data-ask-source-id]');
         if (!chip) return;
         const id = chip.dataset.askSourceId;
