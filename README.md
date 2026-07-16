@@ -274,7 +274,7 @@ npm run typecheck  # tsc --noEmit
 
 ## 아키텍처
 
-Clean Architecture + DDD + Hexagonal (Ports & Adapters) 구조.
+DDD + Hexagonal (Ports & Adapters) 구조.
 
 ```
 src/
