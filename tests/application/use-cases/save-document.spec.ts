@@ -372,7 +372,7 @@ describe('SaveDocumentUseCase', () => {
       expect(result.document.frontmatter.domain).toBeNull();
     });
 
-    it('auto-classifies write-flow documents and infers a same-domain root parent', async () => {
+    it('auto-creates a domain root document and places classified documents under it', async () => {
       const repository = new FakeDocumentRepository();
       const indexCatalog = new FakeIndexCatalog();
       const classifier = new FakeDomainClassifier(Domain.from('shipping'));
@@ -384,24 +384,53 @@ describe('SaveDocumentUseCase', () => {
         classifier,
       );
 
-      const root = await useCase.execute({
-        title: '배송',
-        summary: '배송 안내',
-        content: '배송 정책 안내',
+      const first = await useCase.execute({
+        title: '간식 비용',
+        summary: '간식 비용 안내',
+        content: '새콤달콤 3000원',
       });
-      const child = await useCase.execute({
+      const second = await useCase.execute({
         title: '배송 비용',
         summary: '배송 비용 안내',
         content: '한국 배송 비용은 3000원입니다.',
       });
 
       expect(classifier.callCount).toBe(2);
-      expect(root.document.metadata.domain?.value).toBe('shipping');
-      expect(root.document.metadata.status.value).toBe('published');
-      expect(root.document.parentSlug).toBeNull();
-      expect(child.document.metadata.domain?.value).toBe('shipping');
-      expect(child.document.metadata.status.value).toBe('published');
-      expect(child.document.parentSlug).toBe('배송');
+
+      // shipping 도메인 루트 문서가 자동 생성되어야 한다
+      const domainRoot = await repository.findById('shipping');
+      expect(domainRoot).not.toBeNull();
+      expect(domainRoot?.metadata.domain?.value).toBe('shipping');
+      expect(domainRoot?.parentSlug).toBeNull();
+
+      // 두 문서 모두 도메인 루트 아래에 위치해야 한다
+      expect(first.document.metadata.domain?.value).toBe('shipping');
+      expect(first.document.parentSlug).toBe('shipping');
+      expect(second.document.metadata.domain?.value).toBe('shipping');
+      expect(second.document.parentSlug).toBe('shipping');
+    });
+
+    it('does not create a domain root document when the document itself is the domain root', async () => {
+      const repository = new FakeDocumentRepository();
+      const indexCatalog = new FakeIndexCatalog();
+      const classifier = new FakeDomainClassifier(Domain.from('shipping'));
+      const useCase = new SaveDocumentUseCase(
+        repository,
+        indexCatalog,
+        new FakeDocumentSummaryGenerator('unused'),
+        undefined,
+        classifier,
+      );
+
+      const result = await useCase.execute({
+        title: 'shipping',
+        summary: '배송 도메인',
+        content: '배송 관련 문서 모음',
+      });
+
+      expect(result.document.parentSlug).toBeNull();
+      // 오직 1개 문서만 저장되어야 한다 (도메인 루트가 중복 생성되면 안 된다)
+      expect(repository.count()).toBe(1);
     });
   });
 

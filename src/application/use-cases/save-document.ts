@@ -45,7 +45,7 @@ export class SaveDocumentUseCase {
     const summaryResult = await this.resolveSummary(input, title.value);
     const domain = await this.resolveDomain(input, title.value, summaryResult);
     const slug = title.toSlug();
-    const parentSlug = await this.resolveParentSlug(input.parentSlug, domain, slug, title.value);
+    const parentSlug = await this.resolveParentSlug(input.parentSlug, domain, slug);
 
     if (parentSlug !== null) {
       await HierarchyValidator.validateNoCircle(slug, parentSlug, this.documentRepository);
@@ -211,7 +211,6 @@ export class SaveDocumentUseCase {
     explicitParentSlug: string | null | undefined,
     domain: Domain | null,
     currentSlug: string,
-    currentTitle: string,
   ): Promise<string | null> {
     if (explicitParentSlug !== undefined) {
       return normalizeParentSlug(explicitParentSlug);
@@ -221,29 +220,54 @@ export class SaveDocumentUseCase {
       return null;
     }
 
-    const sameDomainRootDocuments = (await this.documentRepository.findAll()).filter((document) => {
-      return (
-        document.title.toSlug() !== currentSlug &&
-        document.metadata.domain?.equals(domain) === true &&
-        document.parentSlug === null
-      );
-    });
-
-    const normalizedTitle = normalizeTitleForHierarchy(currentTitle);
-    const titleMatches = sameDomainRootDocuments.filter((document) => {
-      const candidateTitle = normalizeTitleForHierarchy(document.title.value);
-      return candidateTitle !== normalizedTitle && normalizedTitle.includes(candidateTitle);
-    });
-
-    const candidates = titleMatches.length > 0 ? titleMatches : sameDomainRootDocuments;
-    if (candidates.length !== 1 && titleMatches.length === 0) {
+    const domainRootSlug = domain.value;
+    if (currentSlug === domainRootSlug) {
       return null;
     }
 
-    return candidates.sort((left, right) => {
-      return left.title.value.length - right.title.value.length ||
-        left.title.value.localeCompare(right.title.value);
-    })[0].title.toSlug();
+    const domainRootExists = await this.documentRepository.exists(domainRootSlug);
+    if (!domainRootExists) {
+      await this.ensureDomainRootDocument(domain);
+    }
+
+    return domainRootSlug;
+  }
+
+  private async ensureDomainRootDocument(domain: Domain): Promise<void> {
+    const domainRootTitle = Title.create(domain.value);
+
+    const metadata = DocumentMetadata.from({
+      status: 'published',
+      domain: domain.value,
+      tags: [],
+    });
+    const domainRootDocument = WikiDocument.create({
+      title: domainRootTitle,
+      metadata,
+      content: '',
+      links: DocumentLinks.empty(),
+      parentSlug: null,
+    });
+    const indexEntry = IndexEntry.create({
+      title: domainRootTitle.value,
+      summary: `${domain.value} 도메인 루트 문서`,
+      sourceCount: 0,
+      status: metadata.status,
+      domain: metadata.domain,
+    });
+
+    await this.documentRepository.save(domainRootDocument);
+    await this.indexCatalog.upsert(indexEntry);
+
+    const finalDocument = await reconcileConflicts({
+      savedDocument: domainRootDocument,
+      documentRepository: this.documentRepository,
+      conflictDetector: this.conflictDetector,
+    });
+
+    if (finalDocument !== domainRootDocument) {
+      await this.documentRepository.save(finalDocument);
+    }
   }
 
   private async detectSemanticConflictsAsync(document: WikiDocument): Promise<void> {
@@ -256,7 +280,8 @@ export class SaveDocumentUseCase {
     const sameDomainDocuments = allDocuments.filter((candidate) => {
       return (
         candidate.title.toSlug() !== document.title.toSlug() &&
-        candidate.metadata.domain?.value === domain
+        candidate.metadata.domain?.value === domain &&
+        candidate.content.trim() !== ''
       );
     });
 
@@ -285,6 +310,3 @@ const normalizeParentSlug = (value: string | null | undefined): string | null =>
   return trimmed === '' ? null : trimmed;
 };
 
-const normalizeTitleForHierarchy = (value: string): string => {
-  return value.toLowerCase().replace(/\s+/g, '');
-};
