@@ -16,12 +16,11 @@
 
 ### 1. 주관적 폴더 구조
 
-사용자마다 다른 분류 기준으로 인해 팀 위키가 파편화되는 문제를 LLM 기반 **자동 도메인 분류**로 해결한다. 문서 내용을 분석해 13개의 표준 도메인(`shipping`, `payment`, `refund` 등) 중 하나로 정규화하며, 새로운 개념은 동적으로 확장된다.
+사용자마다 다른 분류 기준으로 인해 팀 위키가 파편화되는 문제를 LLM 기반 **자동 도메인 분류**로 해결한다. LLM이 문서 내용에서 도메인 레이블을 자유롭게 추출한 뒤, 위키에 이미 존재하는 도메인과 의미론적 유사도를 비교한다. 유사도가 높으면 기존 도메인으로 귀속하고, 낮으면 새 도메인을 동적으로 생성한다.
 
 ```
-"배송비용 관련 안내" → shipping
-"환불 및 반품 정책"  → refund
-"이벤트 쿠폰 안내"  → marketing
+"배송비용 관련 안내" → shipping (기존 도메인 귀속)
+"신규 개념 문서"     → new-concept (신규 도메인 생성)
 ```
 
 ### 2. 파편화된 지식의 충돌
@@ -40,6 +39,105 @@
 ### 4. 문서 간 연결 누락
 
 문서 저장 시 본문에서 기존 문서 제목을 탐지해 `[[링크]]` 형식으로 자동 연결한다. 끊어진 링크는 빨간색으로 표시된다.
+
+---
+
+## 동작 원리
+
+### 1. 도메인 분류
+
+문서를 저장하면 다음 두 단계로 도메인이 결정된다.
+
+**1단계 — 요약 + 레이블 추출 (LLM)**
+
+`OpenRouterDocumentSummaryGenerator`가 문서 제목과 본문을 LLM에 전송해 요약(150~300자)과 한국어 도메인 레이블을 동시에 추출한다.
+
+```json
+{ "summary": "5만원 이상 주문 시 무료배송 정책 안내", "domain": "배송", "confidence": 0.9 }
+```
+
+**2단계 — 기존 도메인과 의미론적 비교 (DomainNormalizer)**
+
+추출된 레이블을 현재 위키에 존재하는 도메인 목록과 LLM이 비교한다.
+
+- **confidence ≥ 0.8** → 기존 도메인으로 귀속 (예: "배송" → `shipping`)
+- **confidence < 0.8** → 신규 도메인을 kebab-case로 생성 (예: "물류창고" → `mulyu-changgо`)
+- **LLM 호출 실패 시** → `domain-taxonomy.ts`의 키워드 매핑 테이블로 폴백 분류
+
+위키에 문서가 전혀 없는 경우(첫 번째 문서)에는 비교 없이 즉시 신규 도메인을 생성한다.
+
+---
+
+### 2. 저장 방식
+
+각 문서는 `data/wiki/{slug}.md` 경로에 **YAML frontmatter + Markdown** 형식으로 저장된다.
+
+```
+data/
+├── wiki/
+│   ├── index.json          ← 전체 문서 인덱스 (제목·요약·도메인)
+│   ├── shipping-policy.md  ← 문서 본문 + 메타데이터
+│   └── refund-guide.md
+```
+
+문서 파일 내부 구조는 다음과 같다.
+
+```markdown
+---
+title: 배송비 정책
+status: published
+domain: shipping
+tags: [배송, 무료배송]
+sources: []
+conflict: false
+conflictWith: []
+semanticConflicts:
+  - conflictingDocumentSlug: shipping-fee-2024
+    explanation: "기준 금액 불일치 (3만원 vs 5만원)"
+    confidence: high
+outbound: [refund-guide]   ← 본문에서 자동 감지된 위키링크
+broken: []                 ← 존재하지 않는 링크
+parent: null               ← 계층 구조 부모 슬러그
+---
+
+5만원 이상 구매 시 무료배송이 적용된다.
+```
+
+`index.json`은 Browse 탭의 목록 조회와 Ask AI의 문서 탐색에 사용되며, 문서 저장·수정·삭제 시마다 자동으로 갱신된다.
+
+---
+
+### 3. 충돌 감지
+
+충돌 감지는 **구조적 충돌(동기)**과 **의미론적 충돌(비동기)** 두 단계로 나뉜다.
+
+**구조적 충돌 — 저장 직후 즉시 실행**
+
+`DetectConflictsUseCase`가 다음 세 조건을 검사한다.
+
+| 조건 | 설명 |
+|---|---|
+| 동일 제목 | 대소문자 무시, slug가 다른 문서가 존재하면 충돌 |
+| 태그 5개 이상 중복 | 두 문서의 태그 교집합이 5개 이상이면 충돌 |
+| 자기 자신 링크 | 본문의 outbound 링크에 자신의 slug가 포함된 경우 |
+
+충돌이 감지되면 frontmatter의 `conflict: true`, `conflictWith: [slug, ...]`에 기록된다.
+
+**의미론적 충돌 — 저장 후 백그라운드에서 비동기 실행**
+
+`OpenRouterSemanticConflictDetector`가 같은 도메인 내 모든 문서를 LLM에 전송해 **사실 모순**을 탐지한다. 단순 중복이나 표현 차이는 무시하고, 가격·날짜·수량·정책처럼 양립 불가능한 사실 충돌만 보고한다.
+
+```json
+[
+  {
+    "slug": "shipping-fee-2024",
+    "explanation": "배송비 기준 금액 불일치 (3만원 vs 5만원)",
+    "confidence": "high"
+  }
+]
+```
+
+결과는 frontmatter의 `semanticConflicts` 배열에 저장되며, 헤더 알림 뱃지와 Browse 탭의 충돌 경고 배너로 표시된다. Ask AI 질의 시 충돌 문서가 검색 결과에 포함되면 답변 대신 충돌 해결을 먼저 요청한다.
 
 ---
 
@@ -345,6 +443,7 @@ infrastructure  →  application  →  domain
 | DELETE | `/documents/:id`           | 문서 삭제                             |
 | GET    | `/documents/search?q=...`  | 문서 검색                             |
 | GET    | `/index`                   | 인덱스 카탈로그                       |
+| GET    | `/conflicts`               | 의미론적 충돌 목록 조회               |
 | POST   | `/ask`                     | Ask AI (질의 → LLM 답변 + 출처)       |
 
 ### 에러 응답 정책
@@ -361,8 +460,8 @@ infrastructure  →  application  →  domain
 
 ```bash
 npm test
-# Test Files  36 passed (36)
-#      Tests 370 passed (370)
+# Test Files  39 passed (39)
+#      Tests  402 passed (402)
 ```
 
 테스트는 도메인/유스케이스/HTTP 라우트/LLM 어댑터/영속화 어댑터 전체 계층을 커버한다. LLM 어댑터 테스트는 `fetch`를 mocking하여 외부 API 호출 없이 실행된다.
