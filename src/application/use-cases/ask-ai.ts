@@ -1,6 +1,8 @@
 import type { DocumentRepository } from '../ports/document-repository.js';
 import type { QuestionAnswerer } from '../ports/question-answerer.js';
 import type { EmbeddingGenerator } from '../ports/embedding-generator.js';
+import type { EmbeddingStore } from '../ports/embedding-store.js';
+import type { IndexCatalog } from '../ports/index-catalog.js';
 import type { WikiDocument } from '../../domain/wiki/document.js';
 import type { SemanticIndexSearcher } from '../services/semantic-index-searcher.js';
 
@@ -27,6 +29,15 @@ export type AskAIOutput = {
 };
 
 const TOP_K = 3;
+const HIGH_CONFIDENCE_COVERAGE = 0.6;
+// Multilingual E5 scores unrelated short texts relatively high, so accepting a
+// source below this boundary tends to produce confident-looking false matches.
+const MIN_SEMANTIC_SIMILARITY = 0.9;
+
+type RankedCandidate = {
+  slug: string;
+  score: number;
+};
 
 export class EmptyQuestionError extends Error {
   constructor() {
@@ -41,6 +52,8 @@ export class AskAIUseCase {
     private readonly questionAnswerer: QuestionAnswerer,
     private readonly embeddingGenerator?: EmbeddingGenerator,
     private readonly indexSearcher?: SemanticIndexSearcher,
+    private readonly indexCatalog?: IndexCatalog,
+    private readonly embeddingStore?: EmbeddingStore,
   ) {}
 
   async execute(input: AskAIInput): Promise<AskAIOutput> {
@@ -73,19 +86,76 @@ export class AskAIUseCase {
   }
 
   private async selectTopK(question: string): Promise<string[]> {
-    if (this.embeddingGenerator && this.indexSearcher) {
+    const indexCandidates = await this.searchIndex(question);
+    if (isHighConfidenceIndexMatch(question, indexCandidates)) {
+      return indexCandidates.slice(0, TOP_K).map((candidate) => candidate.slug);
+    }
+
+    if (this.embeddingGenerator && this.indexSearcher && this.embeddingStore) {
       try {
-        const queryVector = await this.embeddingGenerator.embed(question);
-        const ranked = await this.indexSearcher.findTopK(queryVector, TOP_K);
+        await this.rebuildEmbeddings();
+        const queryVector = await this.embeddingGenerator.embed(`query: ${question}`);
+        const ranked = (await this.indexSearcher.findTopK(queryVector, TOP_K)).filter(
+          (entry) => entry.score >= MIN_SEMANTIC_SIMILARITY,
+        );
         if (ranked.length > 0) {
-          return ranked.map((r) => r.slug);
+          return mergeRankings(indexCandidates, ranked).slice(0, TOP_K).map((entry) => entry.slug);
         }
       } catch (error) {
         console.warn('Semantic search failed, falling back to keyword search:', error);
       }
     }
 
+    if (indexCandidates.length > 0) {
+      return indexCandidates.slice(0, TOP_K).map((candidate) => candidate.slug);
+    }
     return this.legacyKeywordSearch(question);
+  }
+
+  private async searchIndex(question: string): Promise<RankedCandidate[]> {
+    if (!this.indexCatalog) {
+      return [];
+    }
+
+    const tokens = tokenize(question);
+    const entries = await this.indexCatalog.list();
+    const documents = await this.documentRepository.findAll();
+    const slugByTitle = new Map(documents.map((document) => [document.title.value, document.title.toSlug()]));
+
+    return entries
+      .map((entry) => ({
+        slug: slugByTitle.get(entry.title) ?? '',
+        score: scoreIndexEntry(entry.title, entry.summary, tokens),
+      }))
+      .filter((entry) => entry.slug !== '' && entry.score > 0)
+      .sort((left, right) => right.score - left.score);
+  }
+
+  private async rebuildEmbeddings(): Promise<void> {
+    if (!this.embeddingGenerator || !this.embeddingStore || !this.indexCatalog) {
+      return;
+    }
+
+    const entries = await this.indexCatalog.list();
+    const documents = await this.documentRepository.findAll();
+    const slugByTitle = new Map(documents.map((document) => [document.title.value, document.title.toSlug()]));
+    const passages = entries
+      .map((entry) => ({
+        slug: slugByTitle.get(entry.title),
+        text: `passage: ${entry.title}\n${entry.summary}`,
+      }))
+      .filter((entry): entry is { slug: string; text: string } => Boolean(entry.slug));
+
+    if (passages.length === 0) {
+      return;
+    }
+
+    const vectors = await this.embeddingGenerator.embedBatch(passages.map((entry) => entry.text));
+    await Promise.all(
+      passages.map((entry, index) =>
+        this.embeddingStore!.put(entry.slug, vectors[index]!, this.embeddingGenerator!.modelId),
+      ),
+    );
   }
 
   private async legacyKeywordSearch(question: string): Promise<string[]> {
@@ -151,6 +221,48 @@ const countOccurrences = (haystack: string, needle: string): number => {
     index = haystack.indexOf(needle, index + needle.length);
   }
   return count;
+};
+
+const scoreIndexEntry = (title: string, summary: string, tokens: readonly string[]): number => {
+  const normalizedTitle = normalizeForMatch(title);
+  const normalizedSummary = normalizeForMatch(summary);
+  return tokens.reduce((score, token) => {
+    const normalizedToken = normalizeForMatch(token);
+    if (!normalizedToken) return score;
+    const titleScore = normalizedTitle.includes(normalizedToken) ? 5 : 0;
+    const summaryScore = normalizedSummary.includes(normalizedToken) ? 2 : 0;
+    return score + titleScore + summaryScore;
+  }, 0);
+};
+
+const normalizeForMatch = (text: string): string => text.toLowerCase().replace(/\s+/g, '');
+
+const isHighConfidenceIndexMatch = (
+  question: string,
+  candidates: readonly RankedCandidate[],
+): boolean => {
+  if (candidates.length === 0) return false;
+  const tokens = tokenize(question).filter((token) => normalizeForMatch(token).length >= 2);
+  if (tokens.length === 0) return false;
+  const maximumTokenScore = tokens.length * 7;
+  return candidates[0]!.score / maximumTokenScore >= HIGH_CONFIDENCE_COVERAGE;
+};
+
+const mergeRankings = (
+  lexical: readonly RankedCandidate[],
+  semantic: readonly RankedCandidate[],
+): RankedCandidate[] => {
+  const scores = new Map<string, number>();
+  const addRanking = (entries: readonly RankedCandidate[], weight: number) => {
+    entries.forEach((entry, rank) => {
+      scores.set(entry.slug, (scores.get(entry.slug) ?? 0) + weight / (60 + rank + 1));
+    });
+  };
+  addRanking(lexical, 1.2);
+  addRanking(semantic, 1);
+  return [...scores.entries()]
+    .map(([slug, score]) => ({ slug, score }))
+    .sort((left, right) => right.score - left.score);
 };
 
 const buildContextEntry = (document: WikiDocument): string =>

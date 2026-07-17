@@ -28,7 +28,7 @@ const main = async () => {
 
   for (const entry of entries) {
     const slug = entry.title.toLowerCase().replace(/\s+/g, '-');
-    const text = `${entry.title}\n${entry.summary}`;
+    const text = `passage: ${entry.title}\n${entry.summary}`;
     
     try {
       const vector = await embeddingGenerator.embed(text);

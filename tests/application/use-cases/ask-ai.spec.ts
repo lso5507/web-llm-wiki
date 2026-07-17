@@ -2,10 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DocumentRepository } from '../../../src/application/ports/document-repository.js';
 import type { QuestionAnswerer } from '../../../src/application/ports/question-answerer.js';
+import type { EmbeddingGenerator } from '../../../src/application/ports/embedding-generator.js';
 import { AskAIUseCase, EmptyQuestionError } from '../../../src/application/use-cases/ask-ai.js';
+import { SemanticIndexSearcher } from '../../../src/application/services/semantic-index-searcher.js';
 import { DocumentMetadata } from '../../../src/domain/wiki/document-metadata.js';
+import { IndexEntry } from '../../../src/domain/wiki/index-entry.js';
 import { Title } from '../../../src/domain/wiki/title.js';
 import { WikiDocument } from '../../../src/domain/wiki/document.js';
+import { InMemoryEmbeddingStore } from '../../../src/infrastructure/persistence/in-memory/in-memory-embedding-store.js';
+import { InMemoryIndexCatalog } from '../../../src/infrastructure/persistence/in-memory/in-memory-index-catalog.js';
 
 class FakeDocumentRepository implements DocumentRepository {
   private readonly documents = new Map<string, WikiDocument>();
@@ -61,6 +66,15 @@ const buildDocumentWithConflicts = (params: {
 const stubAnswerer = (answer: string | Error): QuestionAnswerer => ({
   answer: vi.fn(() =>
     answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer),
+  ),
+});
+
+const buildEmbeddingGenerator = (): EmbeddingGenerator => ({
+  modelId: 'fake-e5',
+  dimensions: 2,
+  embed: vi.fn(async (text: string) => (text.includes('배포') ? [1, 0] : [0, 1])),
+  embedBatch: vi.fn(async (texts: readonly string[]) =>
+    texts.map((text) => (text.includes('서버 출시') ? [1, 0] : [0, 1])),
   ),
 });
 
@@ -184,6 +198,59 @@ describe('AskAIUseCase', () => {
       const result = await useCase.execute({ question: 'react' });
 
       expect(result.sources).toEqual([{ id: 'react', title: 'React' }]);
+    });
+  });
+
+  describe('index-first hybrid search', () => {
+    it('uses a confident title and summary match without running the embedding model', async () => {
+      const repository = new FakeDocumentRepository();
+      await repository.save(buildDocument({ title: '배포 가이드', content: '운영 반영 절차' }));
+      const indexCatalog = new InMemoryIndexCatalog();
+      await indexCatalog.upsert(IndexEntry.create({ title: '배포 가이드', summary: '운영 배포 절차' }));
+      const embeddings = buildEmbeddingGenerator();
+      const store = new InMemoryEmbeddingStore();
+      const useCase = new AskAIUseCase(
+        repository,
+        stubAnswerer('답변'),
+        embeddings,
+        new SemanticIndexSearcher(store),
+        indexCatalog,
+        store,
+      );
+
+      const result = await useCase.execute({ question: '배포 가이드' });
+
+      expect(result.sources).toEqual([{ id: '배포-가이드', title: '배포 가이드' }]);
+      expect(embeddings.embed).not.toHaveBeenCalled();
+      expect(embeddings.embedBatch).not.toHaveBeenCalled();
+    });
+
+    it('falls back to semantic search and applies E5 query and passage prefixes', async () => {
+      const repository = new FakeDocumentRepository();
+      await repository.save(buildDocument({ title: '릴리스 절차', content: '서비스 공개 방법' }));
+      await repository.save(buildDocument({ title: '간식 목록', content: '과자 정보' }));
+      const indexCatalog = new InMemoryIndexCatalog();
+      await indexCatalog.upsert(IndexEntry.create({ title: '릴리스 절차', summary: '서버 출시 과정' }));
+      await indexCatalog.upsert(IndexEntry.create({ title: '간식 목록', summary: '먹을거리 종류' }));
+      const embeddings = buildEmbeddingGenerator();
+      const store = new InMemoryEmbeddingStore();
+      const useCase = new AskAIUseCase(
+        repository,
+        stubAnswerer('답변'),
+        embeddings,
+        new SemanticIndexSearcher(store),
+        indexCatalog,
+        store,
+      );
+
+      const result = await useCase.execute({ question: '배포 방법을 알려줘' });
+
+      expect(result.sources[0]).toEqual({ id: '릴리스-절차', title: '릴리스 절차' });
+      expect(embeddings.embed).toHaveBeenCalledWith('query: 배포 방법을 알려줘');
+      expect(embeddings.embedBatch).toHaveBeenCalledWith([
+        'passage: 간식 목록\n먹을거리 종류',
+        'passage: 릴리스 절차\n서버 출시 과정',
+      ]);
     });
   });
 

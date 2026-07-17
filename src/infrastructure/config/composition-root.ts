@@ -158,7 +158,14 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     domainNormalizer,
   );
   const askAIUseCase = questionAnswerer 
-    ? new AskAIUseCase(documentRepository, questionAnswerer, embeddingGenerator, indexSearcher)
+    ? new AskAIUseCase(
+        documentRepository,
+        questionAnswerer,
+        embeddingGenerator,
+        indexSearcher,
+        indexCatalog,
+        embeddingStore,
+      )
     : null;
 
   const app = new Hono();
