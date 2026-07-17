@@ -1,5 +1,6 @@
 import type { SaveDocumentInput } from '../dto/save-document.input.js';
 import { ContentRequiredForSummaryGenerationError } from '../errors/content-required-for-summary-generation-error.js';
+import { DocumentAlreadyExistsError } from '../errors/document-already-exists-error.js';
 import type { DocumentRepository } from '../ports/document-repository.js';
 import type {
   DocumentSummaryGenerator,
@@ -42,9 +43,12 @@ export class SaveDocumentUseCase {
 
   async execute(input: SaveDocumentInput): Promise<SaveDocumentResult> {
     const title = Title.create(input.title);
+    const slug = title.toSlug();
+    if (await this.documentRepository.exists(slug)) {
+      throw new DocumentAlreadyExistsError(slug);
+    }
     const summaryResult = await this.resolveSummary(input, title.value);
     const domain = await this.resolveDomain(input, title.value, summaryResult);
-    const slug = title.toSlug();
     const parentSlug = await this.resolveParentSlug(input.parentSlug, domain, slug);
 
     if (parentSlug !== null) {
@@ -309,4 +313,3 @@ const normalizeParentSlug = (value: string | null | undefined): string | null =>
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
 };
-

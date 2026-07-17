@@ -2139,6 +2139,14 @@ export const renderHomePage = (): string => {
         gap: 8px;
       }
 
+      .structural-conflict-list { display: grid; gap: 14px; }
+      .structural-conflict-intro { margin: 0; color: #991b1b; font-size: 13px; line-height: 1.6; }
+      .structural-conflict-item { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+      .structural-conflict-item:first-child { padding-top: 0; border-top: 0; }
+      .structural-conflict-reason { color: #b45309; font-size: 12px; font-weight: 700; }
+      .structural-conflict-title { border: 0; padding: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+      .structural-conflict-content { max-height: 180px; overflow: auto; padding: 12px; background: var(--bg); border-left: 3px solid #f59e0b; color: var(--text); font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+
       @media (max-width: 768px) {
         .container {
           padding: 24px 16px;
@@ -2383,6 +2391,19 @@ export const renderHomePage = (): string => {
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <!-- Domain confirm modal -->
+    <div id="structural-conflict-modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="structural-conflict-modal-title">
+      <div class="modal">
+        <header class="modal-header">
+          <span id="structural-conflict-modal-title" class="modal-title">구조적 충돌 확인</span>
+          <button id="structural-conflict-modal-close" class="modal-close" type="button" aria-label="닫기">×</button>
+        </header>
+        <div id="structural-conflict-modal-body" class="modal-body"></div>
+        <footer class="modal-footer">
+          <button id="structural-conflict-modal-cancel" class="modal-button primary" type="button">작성 화면으로 돌아가기</button>
+        </footer>
+      </div>
+    </div>
+
     <div id="domain-modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="domain-modal-title">
       <div class="modal">
         <header class="modal-header">
@@ -2855,6 +2876,46 @@ export const renderHomePage = (): string => {
       });
 
       // Domain confirm modal
+      const structuralConflictModal = document.getElementById('structural-conflict-modal-backdrop');
+      const structuralConflictModalBody = document.getElementById('structural-conflict-modal-body');
+      const structuralConflictModalClose = document.getElementById('structural-conflict-modal-close');
+      const structuralConflictModalCancel = document.getElementById('structural-conflict-modal-cancel');
+      const closeStructuralConflictModal = () => structuralConflictModal.classList.add('hidden');
+      const reasonLabel = (reasons) => reasons.includes('duplicate-title')
+        ? '동일한 제목의 문서가 이미 존재합니다'
+        : '태그가 5개 이상 겹칩니다';
+      const openStructuralConflictModal = (conflicts) => {
+        structuralConflictModalBody.innerHTML =
+          '<p class="structural-conflict-intro">저장을 중단했습니다. 아래 기존 문서를 확인한 뒤 제목이나 내용을 조정해주세요.</p>' +
+          '<div class="structural-conflict-list">' + conflicts.map((conflict) =>
+            '<section class="structural-conflict-item">' +
+              '<div class="structural-conflict-reason">' + escapeHtml(reasonLabel(conflict.reasons || [])) + '</div>' +
+              '<button type="button" class="structural-conflict-title" data-structural-document-id="' + escapeHtml(conflict.id) + '">' + escapeHtml(conflict.title) + '</button>' +
+              '<div class="structural-conflict-content">' + escapeHtml(conflict.content || '(내용 없음)') + '</div>' +
+            '</section>'
+          ).join('') + '</div>';
+        structuralConflictModal.classList.remove('hidden');
+      };
+      const checkStructuralConflicts = async () => {
+        const response = await fetch('/documents/structural-conflicts/check', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: titleInput.value }),
+        });
+        if (!response.ok) throw new Error('구조적 충돌 검사에 실패했습니다.');
+        return (await response.json()).conflicts || [];
+      };
+      structuralConflictModalClose.addEventListener('click', closeStructuralConflictModal);
+      structuralConflictModalCancel.addEventListener('click', closeStructuralConflictModal);
+      structuralConflictModal.addEventListener('click', (event) => {
+        if (event.target === structuralConflictModal) closeStructuralConflictModal();
+        const documentButton = event.target.closest('[data-structural-document-id]');
+        if (!documentButton) return;
+        closeStructuralConflictModal();
+        switchToTab('browse');
+        fetchAndShowDetail(documentButton.dataset.structuralDocumentId);
+      });
+
       const domainModalBackdrop = document.getElementById('domain-modal-backdrop');
       const domainModalBody = document.getElementById('domain-modal-body');
       const domainModalFooter = document.getElementById('domain-modal-footer');
@@ -3025,12 +3086,18 @@ export const renderHomePage = (): string => {
           return;
         }
 
-        // New document: show domain preview modal
+        // New document: structural validation must finish before AI domain preview.
         saveButton.disabled = true;
-        saveButton.textContent = '분석 중...';
-        openDomainModal();
+        saveButton.textContent = '충돌 확인 중...';
 
         try {
+          const structuralConflicts = await checkStructuralConflicts();
+          if (structuralConflicts.length > 0) {
+            openStructuralConflictModal(structuralConflicts);
+            return;
+          }
+          saveButton.textContent = '분석 중...';
+          openDomainModal();
           const response = await fetch('/documents/preview', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -3520,10 +3587,13 @@ export const renderHomePage = (): string => {
           : '';
         const criteria = hasEvidence
           ? '<div class="compare-criteria">' +
-              '<span>대상: ' + escapeHtml(conflict.subject || '-') + '</span>' +
-              '<span>속성: ' + escapeHtml(conflict.attribute || '-') + '</span>' +
-              '<span>범위: ' + escapeHtml(conflict.scope || '-') + '</span>' +
-              '<span>시점: ' + escapeHtml(conflict.timeframe || '-') + '</span>' +
+              '<span>누가: ' + escapeHtml(conflict.who || '-') + '</span>' +
+              '<span>기준 언제: ' + escapeHtml(conflict.targetWhen || conflict.targetTimeframe || conflict.when || '-') + '</span>' +
+              '<span>비교 언제: ' + escapeHtml(conflict.candidateWhen || conflict.candidateTimeframe || conflict.when || '-') + '</span>' +
+              '<span>어디서: ' + escapeHtml(conflict.where || conflict.scope || '-') + '</span>' +
+              '<span>무엇을: ' + escapeHtml(conflict.what || conflict.subject || '-') + '</span>' +
+              '<span>어떻게: ' + escapeHtml((conflict.targetHow || '-') + ' ↔ ' + (conflict.candidateHow || '-')) + '</span>' +
+              '<span>왜: ' + escapeHtml(conflict.why || '-') + '</span>' +
             '</div>'
           : '';
         return '<section class="compare-section' + (focused ? ' compare-section--focus' : '') + '">' +

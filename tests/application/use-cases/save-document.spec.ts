@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DetectConflictsUseCase } from '../../../src/application/use-cases/detect-conflicts.js';
+import { DocumentAlreadyExistsError } from '../../../src/application/errors/document-already-exists-error.js';
 import { SaveDocumentUseCase } from '../../../src/application/use-cases/save-document.js';
 import { SuggestLinksUseCase } from '../../../src/application/use-cases/suggest-links.js';
 import { ValidateLinksUseCase } from '../../../src/application/use-cases/validate-links.js';
@@ -168,19 +169,22 @@ describe('SaveDocumentUseCase', () => {
     ]);
   });
 
-  it('upserts the same title instead of duplicating it', async () => {
+  it('rejects the same title and preserves the original index entry', async () => {
     const repository = new FakeDocumentRepository();
     const indexCatalog = new FakeIndexCatalog();
     const useCase = new SaveDocumentUseCase(repository, indexCatalog, new FakeDocumentSummaryGenerator('unused'));
 
     await useCase.execute({ title: 'Orenz Test Account', summary: 'old summary' });
-    await useCase.execute({ title: 'Orenz Test Account', summary: 'new summary' });
+    await expect(useCase.execute({
+      title: 'Orenz Test Account',
+      summary: 'new summary',
+    })).rejects.toBeInstanceOf(DocumentAlreadyExistsError);
 
     expect(repository.count()).toBe(1);
     expect(await indexCatalog.list()).toEqual([
       IndexEntry.create({
         title: 'Orenz Test Account',
-        summary: 'new summary',
+        summary: 'old summary',
         status: Status.from('published'),
       }),
     ]);
@@ -598,35 +602,6 @@ describe('SaveDocumentUseCase', () => {
       expect([...result.document.links.broken]).toEqual([]);
     });
 
-    it('does not suggest a link to the document itself', async () => {
-      const repository = new FakeDocumentRepository();
-      const indexCatalog = new FakeIndexCatalog();
-      await repository.save(
-        WikiDocument.create({
-          title: Title.create('Self Page'),
-          content: 'body',
-        }),
-      );
-      const linkSuggester = new SuggestLinksUseCase(repository);
-      const useCase = new SaveDocumentUseCase(
-        repository,
-        indexCatalog,
-        new FakeDocumentSummaryGenerator('unused'),
-        undefined,
-        undefined,
-        undefined,
-        linkSuggester,
-      );
-
-      const result = await useCase.execute({
-        title: 'Self Page',
-        summary: 'manual',
-        content: 'I am Self Page writing about myself.',
-      });
-
-      expect(result.document.content).toBe('I am Self Page writing about myself.');
-    });
-
     it('still saves the document when link suggestion throws', async () => {
       const repository = new FakeDocumentRepository();
       const indexCatalog = new FakeIndexCatalog();
@@ -825,7 +800,7 @@ describe('SaveDocumentUseCase', () => {
       expect([...(beta?.metadata.conflictWith ?? [])]).toEqual(['new']);
     });
 
-    it('does not duplicate the saved slug in existing conflictWith on re-save (idempotent)', async () => {
+    it('rejects a duplicate title without overwriting the existing document', async () => {
       const repository = new FakeDocumentRepository();
       const indexCatalog = new FakeIndexCatalog();
       const conflictDetector = new DetectConflictsUseCase();
@@ -848,11 +823,18 @@ describe('SaveDocumentUseCase', () => {
         conflictDetector,
       );
 
-      await useCase.execute({ title: 'New', summary: 'manual', tags: sharedTags });
-      await useCase.execute({ title: 'New', summary: 'manual', tags: sharedTags });
+      await useCase.execute({ title: 'New', summary: 'manual', content: 'original', tags: sharedTags });
+
+      await expect(useCase.execute({
+        title: 'New',
+        summary: 'replacement',
+        content: 'overwritten',
+        tags: sharedTags,
+      })).rejects.toBeInstanceOf(DocumentAlreadyExistsError);
 
       const existing = await repository.findById('existing');
       expect([...(existing?.metadata.conflictWith ?? [])]).toEqual(['new']);
+      expect((await repository.findById('new'))?.content).toBe('original');
     });
 
     it('skips conflict detection when no detector is provided', async () => {

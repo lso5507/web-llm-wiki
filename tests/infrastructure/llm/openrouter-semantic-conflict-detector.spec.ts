@@ -53,7 +53,7 @@ describe('OpenRouterSemanticConflictDetector', () => {
   it('sends same-domain documents to OpenRouter and maps JSON conflicts', async () => {
     fetchMock.mockResolvedValueOnce(
       buildOkResponse(
-        '[{"classification":"conflict","slug":"shipping-policy","title":"Shipping Policy","subject":"한국 배송비","attribute":"금액","scope":"한국 배송","timeframe":"현재","targetEvidence":"Korea shipping is 3000 KRW","candidateEvidence":"Korea shipping is 4000 KRW","explanation":"한국 배송비가 한 문서에는 4,000원, 다른 문서에는 3,000원으로 안내되어 있습니다.","confidence":"high"}]',
+        '[{"classification":"conflict","slug":"shipping-policy","title":"Shipping Policy","who":"한국 고객","targetWhen":"현재","candidateWhen":"현재","where":"한국 배송","what":"배송비","targetHow":"3000 KRW","candidateHow":"4000 KRW","why":"명시되지 않음","sameContext":true,"mutuallyExclusive":true,"targetEvidence":"Korea shipping is 3000 KRW","candidateEvidence":"Korea shipping is 4000 KRW","explanation":"한국 배송비가 한 문서에는 4,000원, 다른 문서에는 3,000원으로 안내되어 있습니다.","confidence":"high"}]',
       ),
     );
     const detector = new OpenRouterSemanticConflictDetector({
@@ -74,12 +74,23 @@ describe('OpenRouterSemanticConflictDetector', () => {
         conflictingDocumentTitle: 'Shipping Policy',
         explanation: '한국 배송비가 한 문서에는 4,000원, 다른 문서에는 3,000원으로 안내되어 있습니다.',
         confidence: 'high',
-        subject: '한국 배송비',
-        attribute: '금액',
+        subject: '배송비',
+        attribute: '배송비',
         scope: '한국 배송',
         timeframe: '현재',
+        targetTimeframe: '현재',
+        candidateTimeframe: '현재',
         targetEvidence: 'Korea shipping is 3000 KRW',
         candidateEvidence: 'Korea shipping is 4000 KRW',
+        who: '한국 고객',
+        when: '현재',
+        targetWhen: '현재',
+        candidateWhen: '현재',
+        where: '한국 배송',
+        what: '배송비',
+        targetHow: '3000 KRW',
+        candidateHow: '4000 KRW',
+        why: '명시되지 않음',
       },
     ]);
     const [endpoint, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -99,13 +110,13 @@ describe('OpenRouterSemanticConflictDetector', () => {
     fetchMock.mockResolvedValueOnce(buildOkResponse(JSON.stringify([
       {
         classification: 'complementary', slug: 'shipping-policy', title: 'Shipping Policy',
-        subject: '푸시 테이블', attribute: '상태', scope: '운영', timeframe: '현재',
+        who: '푸시 시스템', targetWhen: '현재', candidateWhen: '현재', where: '운영', what: '상태', targetHow: '설계됨', candidateHow: '미사용', why: '명시되지 않음', sameContext: false, mutuallyExclusive: false,
         targetEvidence: 'Korea shipping is 3000 KRW', candidateEvidence: 'Korea shipping is 4000 KRW',
         explanation: '구조와 운영 상태를 각각 설명합니다.', confidence: 'high',
       },
       {
         classification: 'conflict', slug: 'shipping-policy', title: 'Shipping Policy',
-        subject: '배송비', attribute: '금액', scope: '한국', timeframe: '현재',
+        who: '고객', targetWhen: '현재', candidateWhen: '현재', where: '한국', what: '배송비', targetHow: '3000원', candidateHow: '4000원', why: '명시되지 않음', sameContext: true, mutuallyExclusive: true,
         targetEvidence: '문서에 없는 인용문', candidateEvidence: 'Korea shipping is 4000 KRW',
         explanation: '배송비가 다릅니다.', confidence: 'high',
       },
@@ -118,6 +129,40 @@ describe('OpenRouterSemanticConflictDetector', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  it('rejects a conflict when the model copies one document year to both claims', async () => {
+    fetchMock.mockResolvedValueOnce(buildOkResponse(JSON.stringify([{
+      classification: 'conflict', slug: '2024년-간식-비용', title: '2024년 간식 비용',
+      who: '구매자', targetWhen: '2026년', candidateWhen: '2026년', where: '간식', what: '새콤달콤 가격', targetHow: '700원', candidateHow: '300원', why: '명시되지 않음', sameContext: true, mutuallyExclusive: true,
+      targetEvidence: '새콤 달콤 : 700원', candidateEvidence: '새콤달콤 : 300원',
+      explanation: '동일한 상품의 가격이 다릅니다.', confidence: 'high',
+    }])));
+    const detector = new OpenRouterSemanticConflictDetector({ apiKey: 'test-key', model: 'test-model' });
+    const target = documentWithDomain('2026년 간식비용', '새콤 달콤 : 700원');
+    const candidate = documentWithDomain('2024년 간식 비용', '새콤달콤 : 300원');
+
+    const result = await detector.detectConflicts(target, [candidate]);
+
+    expect(result).toEqual([]);
+  });
+
+  it('accepts whitespace-only product name differences in the same timeframe', async () => {
+    fetchMock.mockResolvedValueOnce(buildOkResponse(JSON.stringify([{
+      classification: 'conflict', slug: '매장-b-가격', title: '매장 B 가격',
+      who: '구매자', targetWhen: '2026년', candidateWhen: '2026년', where: '동일 판매처', what: '새콤달콤 가격', targetHow: '700원', candidateHow: '300원', why: '명시되지 않음', sameContext: true, mutuallyExclusive: true,
+      targetEvidence: '새콤 달콤 : 700원', candidateEvidence: '새콤달콤 : 300원',
+      explanation: '동일한 상품의 가격이 다릅니다.', confidence: 'high',
+    }])));
+    const detector = new OpenRouterSemanticConflictDetector({ apiKey: 'test-key', model: 'test-model' });
+
+    const result = await detector.detectConflicts(
+      documentWithDomain('매장 A 가격', '새콤 달콤 : 700원'),
+      [documentWithDomain('매장 B 가격', '새콤달콤 : 300원')],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.what).toBe('새콤달콤 가격');
   });
 
   it('returns an empty array when the response is malformed', async () => {

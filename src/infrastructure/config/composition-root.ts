@@ -16,6 +16,7 @@ import { SemanticIndexSearcher } from '../../application/services/semantic-index
 import { SummaryGeneratorNotConfiguredError } from '../../application/errors/summary-generator-not-configured-error.js';
 import { AskAIUseCase } from '../../application/use-cases/ask-ai.js';
 import { DetectConflictsUseCase } from '../../application/use-cases/detect-conflicts.js';
+import { CheckStructuralConflictsUseCase } from '../../application/use-cases/check-structural-conflicts.js';
 import { GetDocumentUseCase } from '../../application/use-cases/get-document.js';
 import { ListIndexUseCase } from '../../application/use-cases/list-index.js';
 import { SaveDocumentUseCase } from '../../application/use-cases/save-document.js';
@@ -35,6 +36,7 @@ import { createSearchDocumentsRouter } from '../http/routes/search-documents.js'
 import { createUpdateDocumentRouter } from '../http/routes/update-document.js';
 import { createDeleteDocumentRouter } from '../http/routes/delete-document.js';
 import { createListConflictsRouter } from '../http/routes/list-conflicts.js';
+import { createCheckStructuralConflictsRouter } from '../http/routes/check-structural-conflicts.js';
 import { createPreviewDocumentRouter } from '../http/routes/preview-document.js';
 import { renderHomePage } from '../http/views/home.js';
 import { OpenRouterDocumentSummaryGenerator } from '../llm/openrouter-document-summary-generator.js';
@@ -125,6 +127,7 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
   const validateLinksUseCase = new ValidateLinksUseCase(documentRepository);
   const suggestLinksUseCase = new SuggestLinksUseCase(documentRepository);
   const detectConflictsUseCase = new DetectConflictsUseCase();
+  const checkStructuralConflictsUseCase = new CheckStructuralConflictsUseCase(documentRepository);
   const saveDocumentUseCase = new SaveDocumentUseCase(
     documentRepository,
     indexCatalog,
@@ -180,6 +183,10 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
   );
   app.route('/documents', createSearchDocumentsRouter({ searchDocumentsUseCase }));
   app.route('/documents', createGetDocumentRouter({ getDocumentUseCase }));
+  app.route('/documents', createCheckStructuralConflictsRouter({
+    useCase: checkStructuralConflictsUseCase,
+    maxRequestBytes: options.maxRequestBytes ?? 64 * 1024,
+  }));
   app.route(
     '/documents',
     createUpdateDocumentRouter({

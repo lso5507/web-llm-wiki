@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 
 import { ContentRequiredForSummaryGenerationError } from '../../../application/errors/content-required-for-summary-generation-error.js';
+import { DocumentAlreadyExistsError } from '../../../application/errors/document-already-exists-error.js';
 import { SummaryGeneratorNotConfiguredError } from '../../../application/errors/summary-generator-not-configured-error.js';
 import { CircularHierarchyError } from '../../../domain/wiki/hierarchy-validator.js';
 import { InvalidIndexEntryError } from '../../../domain/wiki/index-entry.js';
@@ -72,6 +73,10 @@ export const createDocumentsRouter = ({ saveDocumentUseCase, maxRequestBytes }: 
         201,
       );
     } catch (error) {
+      if (error instanceof DocumentAlreadyExistsError) {
+        return context.json({ message: error.message }, 409);
+      }
+
       if (
         error instanceof InvalidJsonError ||
         error instanceof InvalidDocumentPayloadError ||

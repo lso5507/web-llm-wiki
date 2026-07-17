@@ -164,6 +164,12 @@ export class UpdateDocumentUseCase {
             conflictingDocumentTitle: document.title.value,
             targetEvidence: currentConflict.candidateEvidence,
             candidateEvidence: currentConflict.targetEvidence,
+            targetHow: currentConflict.candidateHow,
+            candidateHow: currentConflict.targetHow,
+            targetWhen: currentConflict.candidateWhen,
+            candidateWhen: currentConflict.targetWhen,
+            targetTimeframe: currentConflict.candidateTimeframe,
+            candidateTimeframe: currentConflict.targetTimeframe,
           }]
         : withoutStale;
 

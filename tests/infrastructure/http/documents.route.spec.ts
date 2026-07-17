@@ -21,6 +21,41 @@ describe('POST /documents', () => {
     });
   });
 
+  it('returns 409 and preserves the original document for a duplicate title', async () => {
+    const app = createApp();
+    const create = (summary: string) => app.request('/documents', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Duplicate', summary }),
+    });
+
+    expect((await create('original')).status).toBe(201);
+    const duplicateResponse = await create('replacement');
+
+    expect(duplicateResponse.status).toBe(409);
+    expect(await duplicateResponse.json()).toEqual({
+      message: '같은 제목의 문서가 이미 존재합니다: duplicate',
+    });
+  });
+
+  it('preflights structural conflicts and exposes the existing document', async () => {
+    const app = createApp();
+    await app.request('/documents', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Existing', summary: 'original', content: 'original body' }),
+    });
+
+    const response = await app.request('/documents/structural-conflicts/check', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Existing' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ conflicts: [{
+      id: 'existing', title: 'Existing', content: 'original body', reasons: ['duplicate-title'],
+    }] });
+  });
+
   it('ignores manual parentSlug input in the write flow', async () => {
     const app = createApp();
 

@@ -9,8 +9,19 @@ export type SemanticConflictAnalysis = {
   attribute?: string;
   scope?: string;
   timeframe?: string;
+  targetTimeframe?: string;
+  candidateTimeframe?: string;
   targetEvidence?: string;
   candidateEvidence?: string;
+  who?: string;
+  when?: string;
+  targetWhen?: string;
+  candidateWhen?: string;
+  where?: string;
+  what?: string;
+  targetHow?: string;
+  candidateHow?: string;
+  why?: string;
 };
 
 export interface SemanticConflictDetector {
