@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:runtime": "rm -rf .runtime && tsc --outDir .runtime --noEmit false",
+    "build:runtime": "node scripts/clean-runtime.mjs && node node_modules/typescript/bin/tsc --outDir .runtime --noEmit false",
     "dev": "npm run build:runtime && node .runtime/src/server.js",
     "start": "npm run build:runtime && node .runtime/src/server.js",
     "test": "vitest run",
