@@ -145,6 +145,7 @@ export const createApp = (options: CreateAppOptions = {}): Hono => {
     validateLinksUseCase,
     suggestLinksUseCase,
     detectConflictsUseCase,
+    semanticConflictDetector,
   );
   const deleteDocumentUseCase = new DeleteDocumentUseCase(documentRepository, indexCatalog);
   const listConflictsUseCase = new ListConflictsUseCase(documentRepository);

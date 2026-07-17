@@ -1057,6 +1057,49 @@ export const renderHomePage = (): string => {
         gap: 8px;
       }
 
+      .compare-relevant-label {
+        padding-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .compare-criteria {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .compare-evidence {
+        display: grid;
+        gap: 10px;
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .compare-evidence-item {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .compare-evidence-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .compare-evidence-quote {
+        margin: 0;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.65;
+        white-space: pre-wrap;
+      }
+
       .compare-sections {
         display: grid;
         gap: 16px;
@@ -3370,7 +3413,34 @@ export const renderHomePage = (): string => {
         return rows;
       };
 
-      const renderCompareRows = (rows, sourceTitle, conflictTitle) => {
+      const selectConflictRows = (rows, explanation) => {
+        const changedIndexes = rows
+          .map((row, index) => row.type === 'same' ? -1 : index)
+          .filter((index) => index >= 0);
+        if (changedIndexes.length <= 12) return rows;
+
+        const keywords = String(explanation || '')
+          .toLocaleLowerCase('ko')
+          .match(/[가-힣a-z0-9]{2,}/g) || [];
+        const ranked = changedIndexes
+          .map((index) => {
+            const content = String(rows[index].content || '').toLocaleLowerCase('ko');
+            const score = keywords.reduce((total, keyword) => total + (content.includes(keyword) ? 1 : 0), 0);
+            return { index, score };
+          })
+          .sort((left, right) => right.score - left.score || left.index - right.index)
+          .slice(0, 3);
+        const included = new Set();
+        ranked.forEach(({ index }) => {
+          for (let cursor = Math.max(0, index - 2); cursor <= Math.min(rows.length - 1, index + 2); cursor += 1) {
+            included.add(cursor);
+          }
+        });
+        return rows.filter((_, index) => included.has(index));
+      };
+
+      const renderCompareRows = (allRows, sourceTitle, conflictTitle, explanation) => {
+        const rows = selectConflictRows(allRows, explanation);
         if (!rows.length) {
           return '<div class="compare-empty">비교할 내용이 없습니다.</div>';
         }
@@ -3437,8 +3507,25 @@ export const renderHomePage = (): string => {
           : '<div class="compare-empty">두 문서의 차이가 없습니다.</div>';
       };
 
-      const renderCompareSection = (sourceDoc, conflictDoc, explanation, confidence, index, focused) => {
+      const renderCompareSection = (sourceDoc, conflictDoc, conflict, index, focused) => {
+        const explanation = conflict.explanation;
+        const confidence = conflict.confidence;
         const rows = buildDiffRows(sourceDoc.content, conflictDoc.content);
+        const hasEvidence = Boolean(conflict.targetEvidence && conflict.candidateEvidence);
+        const evidence = hasEvidence
+          ? '<div class="compare-evidence">' +
+              '<div class="compare-evidence-item"><div class="compare-evidence-label">기준 문서 근거</div><blockquote class="compare-evidence-quote">' + escapeHtml(conflict.targetEvidence) + '</blockquote></div>' +
+              '<div class="compare-evidence-item"><div class="compare-evidence-label">비교 문서 근거</div><blockquote class="compare-evidence-quote">' + escapeHtml(conflict.candidateEvidence) + '</blockquote></div>' +
+            '</div>'
+          : '';
+        const criteria = hasEvidence
+          ? '<div class="compare-criteria">' +
+              '<span>대상: ' + escapeHtml(conflict.subject || '-') + '</span>' +
+              '<span>속성: ' + escapeHtml(conflict.attribute || '-') + '</span>' +
+              '<span>범위: ' + escapeHtml(conflict.scope || '-') + '</span>' +
+              '<span>시점: ' + escapeHtml(conflict.timeframe || '-') + '</span>' +
+            '</div>'
+          : '';
         return '<section class="compare-section' + (focused ? ' compare-section--focus' : '') + '">' +
           '<div class="compare-section-header">' +
             '<div class="compare-section-index">충돌 문서 ' + escapeHtml(String(index + 1)) + '</div>' +
@@ -3452,8 +3539,10 @@ export const renderHomePage = (): string => {
               '<span class="semantic-conflict-confidence semantic-conflict-confidence--' + escapeHtml(confidence || 'low') + '">' + escapeHtml(confidence || 'low') + '</span>' +
               '<span class="compare-section-explanation">' + escapeHtml(explanation || '충돌 내용을 확인해주세요.') + '</span>' +
             '</div>' +
+            criteria +
           '</div>' +
-          renderCompareRows(rows, sourceDoc.title, conflictDoc.title) +
+          evidence +
+          (hasEvidence ? '' : '<div class="compare-relevant-label">기존 충돌 데이터로, 관련 변경 구간을 추정해 표시합니다</div>' + renderCompareRows(rows, sourceDoc.title, conflictDoc.title, explanation)) +
         '</section>';
       };
 
@@ -3468,8 +3557,7 @@ export const renderHomePage = (): string => {
               return renderCompareSection(
                 sourceDoc,
                 entry.document,
-                entry.explanation,
-                entry.confidence,
+                entry,
                 index,
                 entry.document.id === focusedConflictId,
               );
@@ -3561,8 +3649,7 @@ export const renderHomePage = (): string => {
               }
               return {
                 document,
-                explanation: item.explanation,
-                confidence: item.confidence,
+                ...item,
               };
             })
             .filter(Boolean)

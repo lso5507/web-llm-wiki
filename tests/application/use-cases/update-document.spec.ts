@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DocumentRepository } from '../../../src/application/ports/document-repository.js';
 import type { IndexCatalog } from '../../../src/application/ports/index-catalog.js';
+import type { SemanticConflictDetector } from '../../../src/application/ports/semantic-conflict-detector.js';
 import { DocumentNotFoundError } from '../../../src/application/errors/document-not-found-error.js';
 import { DetectConflictsUseCase } from '../../../src/application/use-cases/detect-conflicts.js';
 import { SuggestLinksUseCase } from '../../../src/application/use-cases/suggest-links.js';
@@ -522,6 +523,43 @@ describe('UpdateDocumentUseCase', () => {
 
   describe('conflict re-detection', () => {
     const sharedTags = ['t1', 't2', 't3', 't4', 't5'];
+
+    it('rechecks and clears semantic conflicts after conflicting content is edited', async () => {
+      const repository = new FakeDocumentRepository();
+      const indexCatalog = new FakeIndexCatalog();
+      const staleConflict = {
+        conflictingDocumentSlug: 'existing',
+        conflictingDocumentTitle: 'Existing',
+        explanation: '배송비가 서로 다릅니다.',
+        confidence: 'high' as const,
+      };
+      await repository.save(WikiDocument.create({
+        title: Title.create('Existing'),
+        content: '배송비는 5,000원입니다.',
+        metadata: DocumentMetadata.from({
+          domain: 'shipping',
+          semanticConflicts: [{ ...staleConflict, conflictingDocumentSlug: 'foo-bar', conflictingDocumentTitle: 'Foo Bar' }],
+        }),
+      }));
+      await repository.save(WikiDocument.create({
+        title: Title.create('Foo Bar'),
+        content: '배송비는 무료입니다.',
+        metadata: DocumentMetadata.from({ domain: 'shipping', semanticConflicts: [staleConflict] }),
+      }));
+      await indexCatalog.upsert(IndexEntry.create({ title: 'Foo Bar', summary: 'old summary' }));
+      const semanticDetector: SemanticConflictDetector = {
+        detectConflicts: vi.fn().mockResolvedValue([]),
+      };
+      const useCase = new UpdateDocumentUseCase(
+        repository, indexCatalog, undefined, undefined, undefined, semanticDetector,
+      );
+
+      const updated = await useCase.execute({ id: 'foo-bar', content: '배송비는 5,000원입니다.' });
+
+      expect(semanticDetector.detectConflicts).toHaveBeenCalledOnce();
+      expect(updated.metadata.semanticConflicts).toEqual([]);
+      expect((await repository.findById('existing'))?.metadata.semanticConflicts).toEqual([]);
+    });
 
     it('marks updated document with conflictWith when tag overlap reaches 5 after update', async () => {
       const repository = new FakeDocumentRepository();

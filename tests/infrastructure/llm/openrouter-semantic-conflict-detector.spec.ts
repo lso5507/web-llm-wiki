@@ -53,7 +53,7 @@ describe('OpenRouterSemanticConflictDetector', () => {
   it('sends same-domain documents to OpenRouter and maps JSON conflicts', async () => {
     fetchMock.mockResolvedValueOnce(
       buildOkResponse(
-        '[{"slug":"shipping-policy","title":"Shipping Policy","explanation":"Korea shipping is 4000 KRW here, but 3000 KRW in target.","confidence":"high"}]',
+        '[{"classification":"conflict","slug":"shipping-policy","title":"Shipping Policy","subject":"한국 배송비","attribute":"금액","scope":"한국 배송","timeframe":"현재","targetEvidence":"Korea shipping is 3000 KRW","candidateEvidence":"Korea shipping is 4000 KRW","explanation":"한국 배송비가 한 문서에는 4,000원, 다른 문서에는 3,000원으로 안내되어 있습니다.","confidence":"high"}]',
       ),
     );
     const detector = new OpenRouterSemanticConflictDetector({
@@ -72,8 +72,14 @@ describe('OpenRouterSemanticConflictDetector', () => {
       {
         conflictingDocumentSlug: 'shipping-policy',
         conflictingDocumentTitle: 'Shipping Policy',
-        explanation: 'Korea shipping is 4000 KRW here, but 3000 KRW in target.',
+        explanation: '한국 배송비가 한 문서에는 4,000원, 다른 문서에는 3,000원으로 안내되어 있습니다.',
         confidence: 'high',
+        subject: '한국 배송비',
+        attribute: '금액',
+        scope: '한국 배송',
+        timeframe: '현재',
+        targetEvidence: 'Korea shipping is 3000 KRW',
+        candidateEvidence: 'Korea shipping is 4000 KRW',
       },
     ]);
     const [endpoint, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -85,6 +91,33 @@ describe('OpenRouterSemanticConflictDetector', () => {
     expect(body.model).toBe('openai/gpt-4o-mini');
     expect(body.messages[1].content).toContain('Shipping Fees');
     expect(body.messages[1].content).toContain('Shipping Policy');
+    expect(body.messages[0].content).toContain('natural Korean');
+    expect(body.messages[1].content).toContain('always be written in Korean');
+  });
+
+  it('excludes complementary analyses and conflicts without exact evidence', async () => {
+    fetchMock.mockResolvedValueOnce(buildOkResponse(JSON.stringify([
+      {
+        classification: 'complementary', slug: 'shipping-policy', title: 'Shipping Policy',
+        subject: '푸시 테이블', attribute: '상태', scope: '운영', timeframe: '현재',
+        targetEvidence: 'Korea shipping is 3000 KRW', candidateEvidence: 'Korea shipping is 4000 KRW',
+        explanation: '구조와 운영 상태를 각각 설명합니다.', confidence: 'high',
+      },
+      {
+        classification: 'conflict', slug: 'shipping-policy', title: 'Shipping Policy',
+        subject: '배송비', attribute: '금액', scope: '한국', timeframe: '현재',
+        targetEvidence: '문서에 없는 인용문', candidateEvidence: 'Korea shipping is 4000 KRW',
+        explanation: '배송비가 다릅니다.', confidence: 'high',
+      },
+    ])));
+    const detector = new OpenRouterSemanticConflictDetector({ apiKey: 'test-key', model: 'test-model' });
+
+    const result = await detector.detectConflicts(
+      documentWithDomain('Shipping Fees', 'Korea shipping is 3000 KRW'),
+      [documentWithDomain('Shipping Policy', 'Korea shipping is 4000 KRW')],
+    );
+
+    expect(result).toEqual([]);
   });
 
   it('returns an empty array when the response is malformed', async () => {

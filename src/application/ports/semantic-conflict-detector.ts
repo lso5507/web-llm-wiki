@@ -5,6 +5,12 @@ export type SemanticConflictAnalysis = {
   conflictingDocumentTitle: string;
   explanation: string;
   confidence: 'high' | 'medium' | 'low';
+  subject?: string;
+  attribute?: string;
+  scope?: string;
+  timeframe?: string;
+  targetEvidence?: string;
+  candidateEvidence?: string;
 };
 
 export interface SemanticConflictDetector {

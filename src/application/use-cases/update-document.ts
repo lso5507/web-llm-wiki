@@ -2,6 +2,7 @@ import type { UpdateDocumentInput } from '../dto/update-document.input.js';
 import { DocumentNotFoundError } from '../errors/document-not-found-error.js';
 import type { DocumentRepository } from '../ports/document-repository.js';
 import type { IndexCatalog } from '../ports/index-catalog.js';
+import type { SemanticConflictDetector } from '../ports/semantic-conflict-detector.js';
 import type { DetectConflictsUseCase } from './detect-conflicts.js';
 import type { SuggestLinksUseCase } from './suggest-links.js';
 import type { ValidateLinksUseCase } from './validate-links.js';
@@ -30,6 +31,7 @@ export class UpdateDocumentUseCase {
     private readonly linkValidator?: ValidateLinksUseCase,
     private readonly linkSuggester?: SuggestLinksUseCase,
     private readonly conflictDetector?: DetectConflictsUseCase,
+    private readonly semanticConflictDetector?: SemanticConflictDetector,
   ) {}
 
   async execute(input: UpdateDocumentInput): Promise<WikiDocument> {
@@ -112,12 +114,71 @@ export class UpdateDocumentUseCase {
       await this.documentRepository.save(updated);
     }
 
-    return reconcileConflicts({
+    const reconciled = await reconcileConflicts({
       savedDocument: updated,
       documentRepository: this.documentRepository,
       conflictDetector: this.conflictDetector,
       removedSlugs,
     });
+
+    return this.reconcileSemanticConflicts(reconciled, removedSlugs);
+  }
+
+  private async reconcileSemanticConflicts(
+    document: WikiDocument,
+    removedSlugs: readonly string[],
+  ): Promise<WikiDocument> {
+    if (!this.semanticConflictDetector) {
+      return document;
+    }
+
+    const documentSlug = document.title.toSlug();
+    const allDocuments = await this.documentRepository.findAll();
+    const candidates = document.metadata.domain === null
+      ? []
+      : allDocuments.filter((candidate) =>
+          candidate.title.toSlug() !== documentSlug &&
+          candidate.metadata.domain?.value === document.metadata.domain?.value &&
+          candidate.content.trim() !== '',
+        );
+    const semanticConflicts = document.content.trim() === ''
+      ? []
+      : await this.semanticConflictDetector.detectConflicts(document, candidates);
+    const conflictBySlug = new Map(
+      semanticConflicts.map((conflict) => [conflict.conflictingDocumentSlug, conflict]),
+    );
+    const staleSlugs = new Set([documentSlug, ...removedSlugs]);
+
+    for (const other of allDocuments) {
+      const otherSlug = other.title.toSlug();
+      if (otherSlug === documentSlug) continue;
+
+      const withoutStale = other.metadata.semanticConflicts.filter(
+        (conflict) => !staleSlugs.has(conflict.conflictingDocumentSlug),
+      );
+      const currentConflict = conflictBySlug.get(otherSlug);
+      const next = currentConflict
+        ? [...withoutStale, {
+            ...currentConflict,
+            conflictingDocumentSlug: documentSlug,
+            conflictingDocumentTitle: document.title.value,
+            targetEvidence: currentConflict.candidateEvidence,
+            candidateEvidence: currentConflict.targetEvidence,
+          }]
+        : withoutStale;
+
+      if (JSON.stringify(next) !== JSON.stringify(other.metadata.semanticConflicts)) {
+        await this.documentRepository.save(
+          other.withMetadata(other.metadata.withSemanticConflicts(next)),
+        );
+      }
+    }
+
+    const reconciled = document.withMetadata(
+      document.metadata.withSemanticConflicts(semanticConflicts),
+    );
+    await this.documentRepository.save(reconciled);
+    return reconciled;
   }
 
   private async findExistingSummary(id: string): Promise<string | null> {
